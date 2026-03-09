@@ -93,8 +93,39 @@ Summary of the article with key points...
 
 ## Data Sources
 
-The skill aggregates from 20+ curated RSS feeds. See `config/feeds.yaml` for the full list.
-Sources include major AI labs, tech publications, research blogs, and community platforms.
+The skill aggregates from 25+ curated sources. See `config/feeds.yaml` for the full list.
+
+| Source Type | Examples |
+|-------------|----------|
+| **AI Labs** | OpenAI, Google AI, Anthropic, DeepMind, Meta AI |
+| **News Aggregators** | Techmeme |
+| **Tech Media** | TechCrunch, The Verge, MIT Tech Review, VentureBeat |
+| **Social / X (Twitter)** | AI key voices (EN), AI中文圈 (ZH) — requires `X_BEARER_TOKEN` |
+| **Community** | Hacker News, r/MachineLearning, r/LocalLLaMA, Hugging Face |
+| **Research** | arXiv cs.AI, arXiv cs.CL, Papers With Code |
+| **Newsletters** | Ben's Bites, The Batch (Andrew Ng) |
+| **Chinese Sources** | 机器之心, 量子位, AI科技评论 |
+
+### X (Twitter) Setup
+
+**Option 1 — AttentionVC API (recommended):**
+
+AttentionVC provides curated X/Twitter intelligence with momentum detection and trending analysis.
+
+```bash
+export ATTENTIONVC_API_KEY="avc_your_key"
+```
+
+Get an API key from [attentionvc.ai](https://www.attentionvc.ai/). Provides rising articles, trending topics, and outlier detection endpoints optimized for AI content discovery.
+
+**Option 2 — X API v2 (fallback):**
+
+```bash
+export X_BEARER_TOKEN="your_twitter_api_v2_bearer_token"
+```
+
+Get a bearer token from the [X Developer Portal](https://developer.x.com/). Without either token, X feeds are silently skipped.
+
 Feeds can be customized by editing the configuration file.
 
 ## Guidelines

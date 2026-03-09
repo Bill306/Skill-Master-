@@ -19,6 +19,8 @@ import os
 import re
 import sys
 import time
+import urllib.error
+import urllib.request
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from difflib import SequenceMatcher
@@ -125,6 +127,205 @@ def normalize_entry(entry: dict, feed_info: dict) -> dict | None:
         "language": feed_info.get("language", "en"),
         "priority": feed_info.get("priority", 3),
     }
+
+
+# ---------------------------------------------------------------------------
+# AttentionVC API Fetching (X/Twitter intelligence)
+# ---------------------------------------------------------------------------
+
+
+def fetch_attentionvc(feed_info: dict, settings: dict) -> list[dict]:
+    """Fetch AI-related X/Twitter articles via AttentionVC API.
+
+    Requires the ATTENTIONVC_API_KEY environment variable.
+    API docs: https://www.attentionvc.ai/agent
+    """
+    api_key = os.environ.get("ATTENTIONVC_API_KEY")
+    if not api_key:
+        print(
+            f"  [SKIP] {feed_info['name']}: ATTENTIONVC_API_KEY not set",
+            file=sys.stderr,
+        )
+        return []
+
+    base_url = "https://api.attentionvc.ai"
+    endpoint = feed_info.get("endpoint", "/v1/x/articles/rising")
+    params = feed_info.get("params", {})
+    timeout = settings.get("request_timeout", 15)
+
+    # Build query string
+    query_parts = [f"{k}={urllib.request.quote(str(v))}" for k, v in params.items()]
+    url = f"{base_url}{endpoint}"
+    if query_parts:
+        url += "?" + "&".join(query_parts)
+
+    req = urllib.request.Request(url)
+    req.add_header("Authorization", f"Bearer {api_key}")
+    req.add_header("Accept", "application/json")
+    req.add_header("User-Agent", settings.get("user_agent", "AI-News-Digest/1.0"))
+
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError) as e:
+        print(
+            f"  [WARN] AttentionVC API error for {feed_info['name']}: {e}",
+            file=sys.stderr,
+        )
+        return []
+
+    # AttentionVC returns articles in a list (adapt to actual response shape)
+    articles_data = data if isinstance(data, list) else data.get("articles", data.get("data", []))
+    if not isinstance(articles_data, list):
+        return []
+
+    articles = []
+    for item in articles_data:
+        # Adapt field names to AttentionVC's response format
+        title = item.get("title", item.get("text", ""))[:200]
+        link = item.get("url", item.get("link", ""))
+        summary = item.get("summary", item.get("text", ""))
+        if len(summary) > 500:
+            summary = summary[:497] + "..."
+
+        author = item.get("author", item.get("username", ""))
+        source_label = f"X (@{author})" if author else "X"
+
+        # Parse published date
+        published = datetime.now(timezone.utc)
+        for date_key in ("publishedAt", "created_at", "date", "timestamp"):
+            if date_key in item:
+                try:
+                    date_str = str(item[date_key])
+                    published = datetime.fromisoformat(
+                        date_str.replace("Z", "+00:00")
+                    )
+                except (ValueError, TypeError):
+                    pass
+                break
+
+        # Engagement metrics for sorting
+        engagement = (
+            item.get("views", 0)
+            + item.get("likes", 0) * 2
+            + item.get("retweets", 0) * 3
+        )
+        velocity = item.get("velocityPerHour", item.get("momentum", 0))
+
+        articles.append({
+            "title": title if title else summary[:120],
+            "link": link,
+            "summary": summary,
+            "published": published,
+            "source": source_label,
+            "category": feed_info.get("category", "Industry & Business"),
+            "language": feed_info.get("language", "en"),
+            "priority": feed_info.get("priority", 1),
+            "_engagement": engagement,
+            "_velocity": velocity,
+        })
+
+    # Sort by velocity/engagement
+    articles.sort(
+        key=lambda a: (a.get("_velocity", 0), a.get("_engagement", 0)),
+        reverse=True,
+    )
+    return articles
+
+
+# ---------------------------------------------------------------------------
+# X (Twitter) API Fetching
+# ---------------------------------------------------------------------------
+
+
+def fetch_x_posts(feed_info: dict, settings: dict) -> list[dict]:
+    """Fetch recent AI-related posts from X (Twitter) API v2.
+
+    Requires the X_BEARER_TOKEN environment variable.
+    """
+    bearer_token = os.environ.get("X_BEARER_TOKEN")
+    if not bearer_token:
+        print(
+            f"  [SKIP] {feed_info['name']}: X_BEARER_TOKEN not set",
+            file=sys.stderr,
+        )
+        return []
+
+    query = feed_info.get("query", "AI")
+    max_results = min(settings.get("max_per_feed", 10), 100)
+    timeout = settings.get("request_timeout", 15)
+
+    # X API v2 recent search endpoint
+    url = (
+        f"https://api.twitter.com/2/tweets/search/recent"
+        f"?query={urllib.request.quote(query)}"
+        f"&max_results={max_results}"
+        f"&tweet.fields=created_at,public_metrics,author_id,text"
+        f"&expansions=author_id"
+        f"&user.fields=name,username,verified"
+    )
+
+    req = urllib.request.Request(url)
+    req.add_header("Authorization", f"Bearer {bearer_token}")
+    req.add_header("User-Agent", settings.get("user_agent", "AI-News-Digest/1.0"))
+
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError) as e:
+        print(f"  [WARN] X API error for {feed_info['name']}: {e}", file=sys.stderr)
+        return []
+
+    if "data" not in data:
+        return []
+
+    # Build author lookup from includes
+    authors = {}
+    for user in data.get("includes", {}).get("users", []):
+        authors[user["id"]] = {
+            "name": user.get("name", ""),
+            "username": user.get("username", ""),
+        }
+
+    articles = []
+    for tweet in data["data"]:
+        author = authors.get(tweet.get("author_id"), {})
+        username = author.get("username", "unknown")
+        display_name = author.get("name", username)
+        tweet_id = tweet["id"]
+
+        # Parse created_at
+        published = datetime.now(timezone.utc)
+        if "created_at" in tweet:
+            try:
+                published = datetime.fromisoformat(
+                    tweet["created_at"].replace("Z", "+00:00")
+                )
+            except ValueError:
+                pass
+
+        metrics = tweet.get("public_metrics", {})
+        engagement = (
+            metrics.get("like_count", 0)
+            + metrics.get("retweet_count", 0) * 2
+            + metrics.get("reply_count", 0)
+        )
+
+        articles.append({
+            "title": f"@{username}: {tweet['text'][:120]}{'...' if len(tweet['text']) > 120 else ''}",
+            "link": f"https://x.com/{username}/status/{tweet_id}",
+            "summary": tweet["text"],
+            "published": published,
+            "source": f"X ({display_name})",
+            "category": feed_info.get("category", "Industry & Business"),
+            "language": feed_info.get("language", "en"),
+            "priority": feed_info.get("priority", 2),
+            "_engagement": engagement,
+        })
+
+    # Sort by engagement and keep top results
+    articles.sort(key=lambda a: a.get("_engagement", 0), reverse=True)
+    return articles[:max_results]
 
 
 # ---------------------------------------------------------------------------
@@ -383,7 +584,12 @@ def main():
             end="",
             flush=True,
         )
-        articles = fetch_feed(feed, settings)
+        if feed.get("type") == "attentionvc":
+            articles = fetch_attentionvc(feed, settings)
+        elif feed.get("type") == "x_api":
+            articles = fetch_x_posts(feed, settings)
+        else:
+            articles = fetch_feed(feed, settings)
         print(f" {len(articles)} articles", file=sys.stderr)
         all_articles.extend(articles)
 

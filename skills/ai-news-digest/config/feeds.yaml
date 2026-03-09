@@ -45,6 +45,13 @@ feeds:
     language: en
     priority: 2
 
+  # === News Aggregators ===
+  - name: Techmeme
+    url: https://www.techmeme.com/feed.xml
+    category: Industry & Business
+    language: en
+    priority: 1
+
   # === Tech Media ===
   - name: TechCrunch AI
     url: https://techcrunch.com/category/artificial-intelligence/feed/
@@ -138,6 +145,56 @@ feeds:
     category: Research & Papers
     language: en
     priority: 1
+
+  # === X (Twitter) via AttentionVC ===
+  # Uses AttentionVC API (api.attentionvc.ai) for X/Twitter intelligence
+  # Requires ATTENTIONVC_API_KEY environment variable (get from attentionvc.ai)
+  # Falls back to X API v2 if ATTENTIONVC_API_KEY is not set but X_BEARER_TOKEN is
+  - name: "X: AI Rising Articles"
+    type: attentionvc
+    endpoint: /v1/x/articles/rising
+    params:
+      hours: 24
+      category: ai
+      limit: 10
+    category: Industry & Business
+    language: en
+    priority: 1
+
+  - name: "X: AI Trending"
+    type: attentionvc
+    endpoint: /v1/x/trending
+    params:
+      category: ai
+      limit: 10
+    category: Industry & Business
+    language: en
+    priority: 1
+
+  - name: "X: AI Outliers"
+    type: attentionvc
+    endpoint: /v1/x/articles/outliers
+    params:
+      category: ai
+      limit: 10
+    category: Industry & Business
+    language: en
+    priority: 2
+
+  # Direct X API v2 fallback (requires X_BEARER_TOKEN)
+  - name: "X: AI Key Voices"
+    type: x_api
+    query: "(AI OR LLM OR GPT OR Claude) (launch OR release OR announce OR breakthrough) -is:retweet lang:en"
+    category: Industry & Business
+    language: en
+    priority: 2
+
+  - name: "X: AI 中文圈"
+    type: x_api
+    query: "(AI OR 大模型 OR LLM OR GPT OR Claude OR 人工智能) (发布 OR 开源 OR 突破) -is:retweet lang:zh"
+    category: Industry & Business
+    language: zh
+    priority: 2
 
   # === Chinese AI Sources ===
   - name: 机器之心
