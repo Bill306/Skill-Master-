@@ -1,0 +1,189 @@
+# AI News Digest - RSS Feed Configuration
+# Each feed has: name, url, category, language, priority (1=highest)
+
+feeds:
+  # === AI Labs & Companies ===
+  - name: OpenAI Blog
+    url: https://openai.com/blog/rss/
+    category: LLM & Foundation Models
+    language: en
+    priority: 1
+
+  - name: Google AI Blog
+    url: https://blog.google/technology/ai/rss/
+    category: Research & Papers
+    language: en
+    priority: 1
+
+  - name: Anthropic Blog
+    url: https://www.anthropic.com/feed
+    category: LLM & Foundation Models
+    language: en
+    priority: 1
+
+  - name: Meta AI Blog
+    url: https://ai.meta.com/blog/rss/
+    category: Research & Papers
+    language: en
+    priority: 1
+
+  - name: DeepMind Blog
+    url: https://deepmind.google/blog/rss.xml
+    category: Research & Papers
+    language: en
+    priority: 1
+
+  - name: Microsoft AI Blog
+    url: https://blogs.microsoft.com/ai/feed/
+    category: Industry & Business
+    language: en
+    priority: 2
+
+  - name: NVIDIA AI Blog
+    url: https://developer.nvidia.com/blog/feed/
+    category: Products & Tools
+    language: en
+    priority: 2
+
+  # === Tech Media ===
+  - name: TechCrunch AI
+    url: https://techcrunch.com/category/artificial-intelligence/feed/
+    category: Industry & Business
+    language: en
+    priority: 1
+
+  - name: The Verge AI
+    url: https://www.theverge.com/rss/ai-artificial-intelligence/index.xml
+    category: Industry & Business
+    language: en
+    priority: 2
+
+  - name: Ars Technica AI
+    url: https://feeds.arstechnica.com/arstechnica/technology-lab
+    category: Products & Tools
+    language: en
+    priority: 2
+
+  - name: MIT Technology Review AI
+    url: https://www.technologyreview.com/feed/
+    category: Research & Papers
+    language: en
+    priority: 1
+
+  - name: VentureBeat AI
+    url: https://venturebeat.com/category/ai/feed/
+    category: Industry & Business
+    language: en
+    priority: 2
+
+  - name: The Information AI
+    url: https://www.theinformation.com/feed
+    category: Industry & Business
+    language: en
+    priority: 2
+
+  # === Community & Developer ===
+  - name: Hacker News (AI, 100+ points)
+    url: https://hnrss.org/newest?q=AI+OR+LLM+OR+GPT+OR+Claude+OR+Gemini&points=100
+    category: Open Source
+    language: en
+    priority: 1
+
+  - name: Hugging Face Blog
+    url: https://huggingface.co/blog/feed.xml
+    category: Open Source
+    language: en
+    priority: 1
+
+  - name: r/MachineLearning
+    url: https://www.reddit.com/r/MachineLearning/top/.rss?t=day
+    category: Research & Papers
+    language: en
+    priority: 2
+
+  - name: r/LocalLLaMA
+    url: https://www.reddit.com/r/LocalLLaMA/top/.rss?t=day
+    category: Open Source
+    language: en
+    priority: 2
+
+  # === Research ===
+  - name: arXiv AI (cs.AI)
+    url: https://rss.arxiv.org/rss/cs.AI
+    category: Research & Papers
+    language: en
+    priority: 2
+
+  - name: arXiv LLM (cs.CL)
+    url: https://rss.arxiv.org/rss/cs.CL
+    category: Research & Papers
+    language: en
+    priority: 2
+
+  - name: Papers With Code
+    url: https://paperswithcode.com/latest.rss
+    category: Research & Papers
+    language: en
+    priority: 2
+
+  # === Newsletters & Curated ===
+  - name: Ben's Bites
+    url: https://bensbites.beehiiv.com/feed
+    category: Products & Tools
+    language: en
+    priority: 2
+
+  - name: The Batch (Andrew Ng)
+    url: https://www.deeplearning.ai/the-batch/feed/
+    category: Research & Papers
+    language: en
+    priority: 1
+
+  # === Chinese AI Sources ===
+  - name: 机器之心
+    url: https://www.jiqizhixin.com/rss
+    category: Industry & Business
+    language: zh
+    priority: 1
+
+  - name: 量子位
+    url: https://www.qbitai.com/feed
+    category: Industry & Business
+    language: zh
+    priority: 1
+
+  - name: AI科技评论
+    url: https://www.leiphone.com/feed
+    category: Products & Tools
+    language: zh
+    priority: 2
+
+# === Category Definitions ===
+categories:
+  - name: LLM & Foundation Models
+    keywords: [llm, gpt, claude, gemini, llama, model, foundation, language model, transformer, training, fine-tuning, benchmark]
+  - name: Research & Papers
+    keywords: [paper, arxiv, research, study, findings, breakthrough, novel, approach, algorithm, dataset]
+  - name: Industry & Business
+    keywords: [funding, acquisition, partnership, valuation, revenue, startup, enterprise, market, investment, ipo]
+  - name: Products & Tools
+    keywords: [launch, release, api, sdk, tool, platform, feature, update, developer, integration]
+  - name: Policy & Regulation
+    keywords: [regulation, policy, safety, ethics, governance, legislation, ban, compliance, eu, act, law]
+  - name: Open Source
+    keywords: [open-source, github, community, fork, license, weights, model release, free, self-hosted]
+  - name: Applications
+    keywords: [healthcare, education, finance, manufacturing, autonomous, robotics, agent, workflow, deployment]
+
+# === Settings ===
+settings:
+  # Maximum age of articles to include (in hours)
+  max_age_hours: 24
+  # Request timeout in seconds
+  request_timeout: 15
+  # Maximum articles per feed
+  max_per_feed: 10
+  # User agent for HTTP requests
+  user_agent: "AI-News-Digest/1.0 (RSS Reader)"
+  # Similarity threshold for deduplication (0-1, higher = stricter)
+  dedup_threshold: 0.6
