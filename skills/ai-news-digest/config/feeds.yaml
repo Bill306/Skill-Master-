@@ -149,17 +149,8 @@ feeds:
   # === X (Twitter) via AttentionVC ===
   # Uses AttentionVC API (api.attentionvc.ai) for X/Twitter intelligence
   # Requires ATTENTIONVC_API_KEY environment variable (get from attentionvc.ai)
+  # Credit costs: trending=1, search=2, rising=25, outliers=25
   # Falls back to X API v2 if ATTENTIONVC_API_KEY is not set but X_BEARER_TOKEN is
-  - name: "X: AI Rising Articles"
-    type: attentionvc
-    endpoint: /v1/x/articles/rising
-    params:
-      hours: 24
-      category: ai
-      limit: 10
-    category: Industry & Business
-    language: en
-    priority: 1
 
   - name: "X: AI Trending"
     type: attentionvc
@@ -170,6 +161,30 @@ feeds:
     category: Industry & Business
     language: en
     priority: 1
+    # Cost: 1 credit/call — best value for daily digest
+
+  - name: "X: AI Search"
+    type: attentionvc
+    endpoint: /v1/x/search
+    params:
+      query: "AI OR LLM OR GPT breakthrough OR launch OR release"
+      limit: 10
+    category: Industry & Business
+    language: en
+    priority: 1
+    # Cost: 2 credits/call
+
+  - name: "X: AI Rising Articles"
+    type: attentionvc
+    endpoint: /v1/x/articles/rising
+    params:
+      hours: 24
+      category: ai
+      limit: 10
+    category: Industry & Business
+    language: en
+    priority: 2
+    # Cost: 25 credits/call — premium, enable if budget allows
 
   - name: "X: AI Outliers"
     type: attentionvc
@@ -180,6 +195,7 @@ feeds:
     category: Industry & Business
     language: en
     priority: 2
+    # Cost: 25 credits/call — premium, enable if budget allows
 
   # Direct X API v2 fallback (requires X_BEARER_TOKEN)
   - name: "X: AI Key Voices"
