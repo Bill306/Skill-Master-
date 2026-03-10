@@ -128,27 +128,6 @@ Get a bearer token from the [X Developer Portal](https://developer.x.com/). With
 
 Feeds can be customized by editing the configuration file.
 
-## Agent Team Mode (Advanced)
-
-For higher-quality digests, use Claude Code Agent Teams to run parallel collection, analysis, and review:
-
-```
-# Enable in settings first:
-# ~/.claude/settings.json → "env": {"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"}
-
-# Then tell Claude:
-Create an agent team for today's AI digest. Delegation mode. Spawn 4 teammates:
-en-collector, zh-collector, analyst, reviewer.
-```
-
-See `prompts/agent_team_digest.md` for full prompt templates including:
-- **3-teammate** (quick daily digest, ~50-80K tokens)
-- **4-teammate** (with quality reviewer, ~80-120K tokens)
-- **5-teammate** (with arXiv paper researcher, ~120-180K tokens)
-- **Topic-focused** mode for tracking specific areas
-
-Key advantage over single-session: the analyst ↔ reviewer feedback loop catches clickbait, unverified claims, and missing cross-language context that a single pass would miss.
-
 ## Guidelines
 
 - Always attribute sources with links to original articles
