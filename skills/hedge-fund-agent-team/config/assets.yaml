@@ -1,0 +1,262 @@
+# Hedge Fund Agent Team — Asset Universe & Data Source Configuration
+
+# === Data Sources ===
+data_sources:
+  yahoo_finance:
+    enabled: true
+    # No API key needed
+    rate_limit: 2  # seconds between requests
+    capabilities: [prices, fundamentals, options, etf_flows]
+
+  longbridge:
+    enabled: true
+    # Requires env vars: LONGPORT_APP_KEY, LONGPORT_APP_SECRET, LONGPORT_ACCESS_TOKEN
+    # Get from: https://open.longportapp.com/
+    markets: [US, HK, CN]
+    capabilities: [realtime_quotes, fundamentals, broker_queue, capital_flow]
+
+  tradingview:
+    enabled: true
+    # No API key needed (tradingview-ta library)
+    capabilities: [technical_indicators, screener, recommendations]
+
+# === Asset Universe ===
+# Organize by asset class. Each asset has:
+#   symbol: Ticker symbol (Yahoo Finance format)
+#   tv_symbol: TradingView symbol (exchange:ticker)
+#   lb_symbol: Longbridge symbol (market.ticker)
+#   sector: For equities
+#   tags: Custom labels
+
+watchlists:
+  # --- US Equities: Mega-cap Tech / AI ---
+  us_tech_ai:
+    description: "US mega-cap tech & AI leaders"
+    assets:
+      - symbol: NVDA
+        tv_symbol: NASDAQ:NVDA
+        lb_symbol: US.NVDA
+        sector: Semiconductors
+        tags: [ai, gpu, datacenter]
+
+      - symbol: MSFT
+        tv_symbol: NASDAQ:MSFT
+        lb_symbol: US.MSFT
+        sector: Software
+        tags: [ai, cloud, enterprise]
+
+      - symbol: AAPL
+        tv_symbol: NASDAQ:AAPL
+        lb_symbol: US.AAPL
+        sector: Consumer Electronics
+        tags: [hardware, ecosystem]
+
+      - symbol: GOOGL
+        tv_symbol: NASDAQ:GOOGL
+        lb_symbol: US.GOOGL
+        sector: Internet
+        tags: [ai, cloud, search, advertising]
+
+      - symbol: META
+        tv_symbol: NASDAQ:META
+        lb_symbol: US.META
+        sector: Internet
+        tags: [ai, social, metaverse]
+
+      - symbol: AMZN
+        tv_symbol: NASDAQ:AMZN
+        lb_symbol: US.AMZN
+        sector: E-Commerce
+        tags: [ai, cloud, retail]
+
+      - symbol: TSM
+        tv_symbol: NYSE:TSM
+        lb_symbol: US.TSM
+        sector: Semiconductors
+        tags: [foundry, chips]
+
+      - symbol: AVGO
+        tv_symbol: NASDAQ:AVGO
+        lb_symbol: US.AVGO
+        sector: Semiconductors
+        tags: [ai, networking, chips]
+
+  # --- US Equities: AI Infrastructure ---
+  us_ai_infra:
+    description: "AI infrastructure and picks-and-shovels"
+    assets:
+      - symbol: AMD
+        tv_symbol: NASDAQ:AMD
+        lb_symbol: US.AMD
+        sector: Semiconductors
+        tags: [ai, gpu, datacenter]
+
+      - symbol: SMCI
+        tv_symbol: NASDAQ:SMCI
+        lb_symbol: US.SMCI
+        sector: Hardware
+        tags: [ai, servers]
+
+      - symbol: MRVL
+        tv_symbol: NASDAQ:MRVL
+        lb_symbol: US.MRVL
+        sector: Semiconductors
+        tags: [ai, networking]
+
+      - symbol: ARM
+        tv_symbol: NASDAQ:ARM
+        lb_symbol: US.ARM
+        sector: Semiconductors
+        tags: [ai, mobile, edge]
+
+  # --- Hong Kong / China ---
+  hk_china:
+    description: "HK-listed China tech and AI plays"
+    assets:
+      - symbol: "9988.HK"
+        tv_symbol: HKEX:9988
+        lb_symbol: HK.9988
+        sector: E-Commerce
+        tags: [ai, cloud, china]
+        name: Alibaba
+
+      - symbol: "0700.HK"
+        tv_symbol: HKEX:700
+        lb_symbol: HK.0700
+        sector: Internet
+        tags: [ai, gaming, social, china]
+        name: Tencent
+
+      - symbol: "9888.HK"
+        tv_symbol: HKEX:9888
+        lb_symbol: HK.9888
+        sector: E-Commerce
+        tags: [ai, e-commerce, china]
+        name: Baidu
+
+      - symbol: "3690.HK"
+        tv_symbol: HKEX:3690
+        lb_symbol: HK.3690
+        sector: Internet
+        tags: [ai, delivery, china]
+        name: Meituan
+
+      - symbol: "1810.HK"
+        tv_symbol: HKEX:1810
+        lb_symbol: HK.1810
+        sector: Consumer Electronics
+        tags: [ev, iot, china]
+        name: Xiaomi
+
+  # --- Crypto ---
+  crypto:
+    description: "Major cryptocurrencies"
+    assets:
+      - symbol: BTC-USD
+        tv_symbol: BINANCE:BTCUSDT
+        sector: Crypto
+        tags: [store_of_value, layer1]
+
+      - symbol: ETH-USD
+        tv_symbol: BINANCE:ETHUSDT
+        sector: Crypto
+        tags: [smart_contracts, layer1, defi]
+
+      - symbol: SOL-USD
+        tv_symbol: BINANCE:SOLUSDT
+        sector: Crypto
+        tags: [layer1, defi, meme]
+
+  # --- Macro Instruments ---
+  macro:
+    description: "Macro indicators and instruments"
+    assets:
+      - symbol: ^GSPC
+        tv_symbol: SP:SPX
+        sector: Index
+        tags: [us_equity, benchmark]
+        name: S&P 500
+
+      - symbol: ^NDX
+        tv_symbol: NASDAQ:NDX
+        sector: Index
+        tags: [us_tech, benchmark]
+        name: Nasdaq 100
+
+      - symbol: ^HSI
+        tv_symbol: HKEX:HSI
+        sector: Index
+        tags: [hk_equity, benchmark]
+        name: Hang Seng
+
+      - symbol: "000300.SS"
+        tv_symbol: SSE:000300
+        sector: Index
+        tags: [china_equity, benchmark]
+        name: CSI 300
+
+      - symbol: ^VIX
+        tv_symbol: TVC:VIX
+        sector: Volatility
+        tags: [fear_gauge, hedging]
+        name: VIX
+
+      - symbol: ^TNX
+        tv_symbol: TVC:US10Y
+        sector: Rates
+        tags: [us_treasury, macro]
+        name: US 10Y Yield
+
+      - symbol: GC=F
+        tv_symbol: COMEX:GC1!
+        sector: Commodities
+        tags: [gold, safe_haven]
+        name: Gold Futures
+
+      - symbol: CL=F
+        tv_symbol: NYMEX:CL1!
+        sector: Commodities
+        tags: [oil, energy]
+        name: WTI Crude
+
+      - symbol: DX-Y.NYB
+        tv_symbol: TVC:DXY
+        sector: FX
+        tags: [dollar, macro]
+        name: US Dollar Index
+
+      - symbol: USDCNY=X
+        tv_symbol: FX:USDCNH
+        sector: FX
+        tags: [china, rmb, macro]
+        name: USD/CNY
+
+# === Sector Mapping ===
+sectors:
+  - name: Semiconductors
+    etf: SMH
+    tags: [chips, foundry, gpu]
+  - name: Software
+    etf: IGV
+    tags: [saas, enterprise, cloud]
+  - name: Internet
+    etf: FDN
+    tags: [social, search, advertising]
+  - name: China Tech
+    etf: KWEB
+    tags: [china, tech, hk]
+  - name: Crypto
+    etf: BITO
+    tags: [bitcoin, defi]
+
+# === Risk Parameters ===
+risk_params:
+  max_position_size: 0.10       # 10% max per position
+  max_sector_exposure: 0.30     # 30% max per sector
+  max_single_country: 0.50      # 50% max per country
+  max_drawdown_threshold: 0.15  # 15% portfolio drawdown triggers review
+  var_confidence: 0.95          # 95% VaR confidence level
+  var_horizon_days: 1           # 1-day VaR
+  stop_loss_default: 0.07       # 7% default stop-loss
+  take_profit_default: 0.15     # 15% default take-profit
+  correlation_warning: 0.80     # Warn if pair correlation > 0.8
