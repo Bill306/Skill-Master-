@@ -226,6 +226,13 @@ agents:
     special: veto_power
 
   # === 6. Trader (with Technical Analysis) ===
+  #
+  # === 7. Red Team (Adversarial Analyst) ===
+  # NOTE: Defined after Trader below, before Communication Protocol
+  #
+  # === 8. Historian (Performance Tracker) ===
+  # NOTE: Defined after Red Team below
+  #
   - role: trader
     name: Trader
     description: "Technical analysis, entry/exit timing, position sizing, execution"
@@ -288,11 +295,129 @@ agents:
     data_needs: [price_data, volume_data, tradingview_signals]
     output: /tmp/hedge-fund/trader.json
 
+  # === 7. Red Team (Adversarial Analyst) ===
+  - role: red_team
+    name: Red Team Analyst
+    description: "Adversarial analyst — systematically destroys bull theses and finds hidden risks"
+    spawn_prompt: |
+      You are the Red Team Analyst at an AI hedge fund. Your SOLE PURPOSE is to
+      find flaws, risks, and reasons why every recommendation could fail.
+      You are the designated devil's advocate. You are NOT trying to be helpful
+      or constructive — you are trying to BREAK every thesis.
+
+      Your responsibilities:
+      1. Read ALL other agents' outputs from /tmp/hedge-fund/
+      2. For every BUY/LONG recommendation, produce the strongest possible BEAR case:
+         - What could go wrong that the team hasn't considered?
+         - Historical precedents where similar setups failed
+         - Hidden risks: concentration, correlation, liquidity, regulatory
+         - Is this thesis based on extrapolation or genuine edge?
+      3. For every SELL/SHORT recommendation, produce the BULL case:
+         - What if the team is wrong? What's the upside risk?
+      4. Challenge macro regime calls:
+         - "You say RISK-ON, but here's why it could flip..."
+      5. Attack sentiment analysis:
+         - Is the sentiment consensus a CONTRARIAN indicator?
+         - Is the market too complacent (low VIX + high exposure)?
+      6. Score your conviction on each challenge: HIGH / MEDIUM / LOW
+         - HIGH = "This is a real risk the team is ignoring"
+         - MEDIUM = "Worth considering, could go either way"
+         - LOW = "Devil's advocate stretch, but still worth noting"
+
+      IMPORTANT: You are NOT allowed to agree with the team. If you can't find
+      a strong bear case, find a weak one. The PM will weigh your challenges.
+
+      Read agent credibility context first:
+      python skills/hedge-fund-agent-team/scripts/historian.py context
+
+      Output to /tmp/hedge-fund/red_team.json:
+      {
+        "challenges": [
+          {
+            "target_agent": "fundamental|quant|trader|macro|sentiment",
+            "symbol": "SYMBOL",
+            "original_direction": "LONG|SHORT",
+            "original_confidence": "HIGH|MEDIUM|LOW",
+            "bear_case": "Detailed argument why this could fail...",
+            "historical_precedent": "Similar situation in [year] that failed because...",
+            "hidden_risk": "Risk not mentioned by the team...",
+            "conviction": "HIGH|MEDIUM|LOW",
+            "kill_score": 1-10  // How likely this challenge kills the trade
+          }
+        ],
+        "portfolio_level_risks": [
+          "Systemic risk the team is ignoring..."
+        ],
+        "contrarian_view": "Overall market view opposite to team consensus",
+        "recommendation": "PROCEED|REDUCE_SIZE|ABORT"
+      }
+    tools: [Bash, Read, Write]
+    data_needs: [all_agent_outputs, credibility_scores]
+    output: /tmp/hedge-fund/red_team.json
+    special: adversarial
+
+  # === 8. Historian (Performance Tracker) ===
+  - role: historian
+    name: Historian
+    description: "Tracks past recommendations, measures P&L, calibrates agent credibility"
+    spawn_prompt: |
+      You are the Historian at an AI hedge fund. You provide the feedback loop
+      that makes the team smarter over time.
+
+      Your responsibilities:
+      1. FIRST: Review past performance and generate context
+         python skills/hedge-fund-agent-team/scripts/historian.py review --days 30
+         python skills/hedge-fund-agent-team/scripts/historian.py credibility
+         python skills/hedge-fund-agent-team/scripts/historian.py context
+
+      2. Share credibility context with all other agents:
+         - Which agents have been most accurate recently?
+         - Which agents' HIGH confidence calls actually pan out?
+         - Any systematic biases? (e.g., "Fundamental analyst is too bullish on tech")
+
+      3. After the team produces recommendations, RECORD them:
+         python skills/hedge-fund-agent-team/scripts/historian.py record --input /tmp/hedge-fund/
+
+      4. Generate performance report:
+         python skills/hedge-fund-agent-team/scripts/historian.py report --days 90
+
+      5. Advise the PM on trust weighting:
+         - "Trader's last 5 LONG calls: 4 wins, 1 loss → trust HIGH confidence calls"
+         - "Macro Analyst predicted RISK-OFF 3 times, market went up 2 of those → discount"
+         - "Red Team challenged 8 trades, was RIGHT on 5 → take challenges seriously"
+
+      Output to /tmp/hedge-fund/historian.json:
+      {
+        "credibility_scores": {
+          "agent_name": {"score": float, "rating": "...", "bias": "...", "sample_size": int}
+        },
+        "trust_weights": {
+          "agent_name": float  // 0.5 to 1.5 multiplier on agent's confidence
+        },
+        "recent_performance": {
+          "win_rate": float,
+          "avg_pnl": float,
+          "best_agent": "...",
+          "worst_agent": "...",
+          "systematic_biases": ["..."]
+        },
+        "recommendations_recorded": int,
+        "advice_to_pm": "Natural language advice on how to weight today's calls"
+      }
+    tools: [Bash, Read, Write]
+    data_needs: [trade_history, agent_outputs]
+    output: /tmp/hedge-fund/historian.json
+
 # === Communication Protocol ===
 communication:
-  # Phase 1: Independent research (no cross-talk)
+  # Phase 0: Historian provides context (runs first)
+  phase0_context:
+    - [historian]
+    description: "Historian reviews past performance, generates credibility scores, shares context"
+
+  # Phase 1: Independent research (parallel, no cross-talk)
   phase1_parallel:
-    - [macro, quant, fundamental, sentiment]
+    - [macro, quant, fundamental, sentiment, trader]
     description: "All agents fetch data and produce initial analysis independently"
 
   # Phase 2: Cross-challenge (inter-agent messaging)
@@ -310,11 +435,23 @@ communication:
       - from: macro
         to: [quant, fundamental, trader]
         purpose: "Macro context constrains all recommendations"
-    description: "Agents challenge each other's conclusions"
+      - from: red_team
+        to: [fundamental, quant, trader, macro, sentiment]
+        purpose: "Red Team challenges every bull thesis and exposes hidden risks"
+      - from: historian
+        to: [risk, red_team]
+        purpose: "Historian shares credibility scores to weight agent opinions"
+    description: "Agents challenge each other's conclusions. Red Team attacks all theses."
 
-  # Phase 3: Consensus (Lead synthesizes)
-  phase3_consensus:
-    lead_action: "Read all /tmp/hedge-fund/*.json, resolve conflicts, produce final memo"
+  # Phase 3: Risk + Red Team review (must wait for Phase 2)
+  phase3_review:
+    - [risk, red_team]
+    description: "Risk Manager checks compliance. Red Team delivers final challenges."
+
+  # Phase 4: Historian records + PM synthesizes
+  phase4_consensus:
+    historian_action: "Record all recommendations: python historian.py record --input /tmp/hedge-fund/"
+    lead_action: "Read all /tmp/hedge-fund/*.json, weight by credibility, resolve conflicts, produce final memo"
 
 # === Output Directory ===
 output:

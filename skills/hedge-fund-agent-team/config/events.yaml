@@ -1,0 +1,218 @@
+# Hedge Fund Agent Team — Event Trigger Configuration
+# Defines what events trigger which agent team responses
+
+# === Price-Based Triggers ===
+price_triggers:
+  stop_loss_breach:
+    severity: CRITICAL
+    action: CLOSE_POSITION
+    agents: [trader, risk]
+    auto_launch: true
+    description: "Position hit stop-loss level"
+
+  large_move:
+    threshold_pct: 5.0  # Daily move >= 5%
+    severity: HIGH
+    action: ANALYZE
+    agents: [fundamental, sentiment, trader]
+    auto_launch: false  # Require PM confirmation
+    description: "Stock moved more than threshold in one day"
+
+  price_gap:
+    threshold_pct: 3.0  # Gap up/down >= 3%
+    severity: MEDIUM
+    action: ANALYZE
+    agents: [trader, quant]
+    auto_launch: false
+    description: "Opening price gap from previous close"
+
+  unusual_volume:
+    threshold_ratio: 2.5  # Volume >= 2.5x average
+    severity: MEDIUM
+    action: INVESTIGATE
+    agents: [quant, sentiment]
+    auto_launch: false
+    description: "Trading volume significantly above average"
+
+  near_52w_high:
+    threshold_pct: 2.0  # Within 2% of 52-week high
+    severity: LOW
+    action: MONITOR
+    agents: [trader]
+    description: "Price approaching 52-week high"
+
+  near_52w_low:
+    threshold_pct: 2.0  # Within 2% of 52-week low
+    severity: MEDIUM
+    action: INVESTIGATE
+    agents: [fundamental, trader]
+    description: "Price approaching 52-week low"
+
+# === Volatility Triggers ===
+volatility_triggers:
+  vix_spike:
+    threshold_daily_change_pct: 20  # VIX up 20%+ in one day
+    severity: CRITICAL
+    action: EMERGENCY_REVIEW
+    agents: [macro, risk, trader]
+    auto_launch: true
+    team_config: quick_3_agent
+    description: "VIX spiked — possible market panic"
+
+  vix_extreme:
+    threshold_level: 30
+    severity: CRITICAL
+    action: RISK_REVIEW
+    agents: [risk, macro, trader]
+    auto_launch: true
+    description: "VIX at extreme fear level"
+
+  vix_elevated:
+    threshold_level: 20
+    severity: HIGH
+    action: MONITOR
+    agents: [risk, macro]
+    auto_launch: false
+    description: "VIX above normal range"
+
+# === Economic Calendar Triggers ===
+calendar_triggers:
+  fomc_decision:
+    impact: CRITICAL
+    pre_event_hours: 24  # Prepare 24h before
+    post_event_hours: 4  # Analyze within 4h after
+    agents: [macro, risk, trader]
+    team_config: macro_focused
+    description: "Federal Reserve rate decision"
+
+  us_cpi:
+    impact: HIGH
+    pre_event_hours: 12
+    post_event_hours: 2
+    agents: [macro, quant]
+    description: "US Consumer Price Index release"
+
+  us_nfp:
+    impact: HIGH
+    pre_event_hours: 12
+    post_event_hours: 2
+    agents: [macro]
+    description: "US Non-Farm Payrolls"
+
+  earnings_report:
+    impact: HIGH
+    pre_event_hours: 24
+    post_event_hours: 2
+    agents: [fundamental, trader, sentiment]
+    team_config: earnings_focused
+    description: "Company earnings release for watchlist stock"
+
+  china_pmi:
+    impact: MEDIUM
+    pre_event_hours: 6
+    post_event_hours: 2
+    agents: [macro, sentiment]
+    description: "China PMI data release"
+
+  pboc_decision:
+    impact: HIGH
+    pre_event_hours: 12
+    post_event_hours: 4
+    agents: [macro, risk]
+    description: "PBoC interest rate decision"
+
+  options_expiry:
+    impact: MEDIUM
+    pre_event_hours: 48
+    post_event_hours: 2
+    agents: [trader, risk]
+    description: "Monthly/quarterly options expiry (OPEX)"
+
+# === News Sentiment Triggers ===
+news_triggers:
+  breaking_news:
+    sentiment_shift_threshold: 0.5  # Sentiment change > 0.5 in 4 hours
+    severity: HIGH
+    action: ANALYZE
+    agents: [sentiment, fundamental, trader]
+    news_source: ai-news-digest
+    description: "Significant sentiment shift detected in news"
+
+  regulatory_action:
+    keywords: ["investigation", "lawsuit", "ban", "regulation", "fine", "antitrust"]
+    severity: HIGH
+    action: RISK_REVIEW
+    agents: [risk, fundamental, sentiment]
+    description: "Regulatory action affecting portfolio companies"
+
+  competitor_launch:
+    keywords: ["launch", "announce", "release", "unveil"]
+    severity: MEDIUM
+    action: ANALYZE
+    agents: [fundamental, sentiment]
+    description: "Competitor product launch or major announcement"
+
+# === Agent Team Response Templates ===
+# These define which team configuration to auto-launch for each trigger
+team_responses:
+  emergency_review:
+    teammates: 3
+    agents: [macro, risk, trader]
+    mode: delegation
+    priority: immediate
+    description: "Quick emergency response team"
+
+  full_analysis:
+    teammates: 6
+    agents: [macro, quant, fundamental, sentiment, risk, trader]
+    mode: delegation
+    require_plan_approval: true
+    priority: high
+    description: "Full analysis with all agents"
+
+  full_analysis_v2:
+    teammates: 8
+    agents: [macro, quant, fundamental, sentiment, risk, trader, red_team, historian]
+    mode: delegation
+    require_plan_approval: true
+    priority: high
+    description: "Full analysis with Red Team and Historian"
+
+  earnings_focused:
+    teammates: 3
+    agents: [fundamental, trader, sentiment]
+    mode: delegation
+    priority: high
+    description: "Earnings-specific analysis team"
+
+  macro_focused:
+    teammates: 3
+    agents: [macro, risk, trader]
+    mode: delegation
+    priority: high
+    description: "Macro event response team"
+
+# === MCP Integration ===
+mcp:
+  notion:
+    enabled: true
+    database: "Investment Journal"
+    log_events: [CRITICAL, HIGH]
+    log_trade_records: true
+    log_performance_reviews: true
+
+  slack:
+    enabled: false  # Set to true and configure webhook
+    channel: "#trading-alerts"
+    mention_on_critical: true
+    log_events: [CRITICAL, HIGH, MEDIUM]
+
+# === Monitoring Schedule ===
+schedule:
+  # How often to run each check (if using cron or SessionStart hook)
+  price_check: "*/15 * * * *"       # Every 15 minutes during market hours
+  volatility_check: "*/5 * * * *"   # Every 5 minutes
+  calendar_check: "0 8 * * 1-5"     # 8 AM weekdays
+  news_check: "0 */2 * * *"         # Every 2 hours
+  history_review: "0 20 * * 5"      # Friday 8 PM — weekly review
+  credibility_update: "0 0 1 * *"   # 1st of month — monthly credibility recalc
