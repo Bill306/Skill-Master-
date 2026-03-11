@@ -242,7 +242,7 @@ def review_recommendations(days=30):
     # Group by symbol to batch price lookups
     symbols_needed = set()
     for rec in records:
-        if rec["status"] == "OPEN" and rec.get("entry_price") and rec.get("symbol", "").startswith("_") is False:
+        if rec["status"] == "OPEN" and rec.get("entry_price") and not rec.get("symbol", "").startswith("_"):
             symbols_needed.add(rec["symbol"])
 
     # Fetch current prices
@@ -292,6 +292,8 @@ def review_recommendations(days=30):
         stop = rec.get("stop_loss")
         tp = rec.get("take_profit")
         tp_targets = tp if isinstance(tp, list) else [tp] if tp else []
+        # Filter out None values in take-profit list (e.g. [null, 200.0])
+        tp_targets = [t for t in tp_targets if t is not None]
 
         if stop and direction == "LONG" and current <= float(stop):
             rec["status"] = "CLOSED"

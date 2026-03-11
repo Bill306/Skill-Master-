@@ -441,7 +441,7 @@ def main():
                 # Skip macro instruments that aren't tradeable
                 if sym.startswith("^") and sym not in ("^GSPC", "^NDX", "^HSI"):
                     continue
-                if "=F" in sym or "=X" in sym:
+                if "=F" in sym or "=X" in sym or "DX-Y" in sym:
                     continue
                 symbols.append(sym)
         if not symbols:
@@ -455,7 +455,7 @@ def main():
             print("Error: Could not extract symbols from portfolio dir", file=sys.stderr)
             sys.exit(1)
     else:
-        print("Error: Specify --symbols or --portfolio", file=sys.stderr)
+        print("Error: Specify --symbols, --watchlist, or --portfolio", file=sys.stderr)
         sys.exit(1)
 
     if args.weights:

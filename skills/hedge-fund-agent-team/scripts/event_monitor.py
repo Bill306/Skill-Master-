@@ -378,7 +378,7 @@ def check_news_alerts(symbols=None, news_output_path=None, threshold=0.5):
             import subprocess
             try:
                 result = subprocess.run(
-                    ["python", str(news_script), "--hours", "6", "--format", "json"],
+                    [sys.executable, str(news_script), "--hours", "6", "--format", "json"],
                     capture_output=True, text=True, timeout=60,
                 )
                 if result.returncode == 0 and result.stdout.strip():
@@ -447,9 +447,12 @@ def _analyze_news_sentiment(articles, symbols=None, threshold=0.5):
         # Match to symbols
         if symbols:
             for sym in symbols:
+                # Extract ticker part before any exchange suffix for name lookup
+                # "9988.HK" → "9988", "BTC-USD" → "btc", "NVDA" → "nvda"
+                sym_base = sym.split(".")[0].split("-")[0].lower()
                 sym_lower = sym.lower().replace("-", "").replace(".", "")
                 # Also check common company name mappings
-                sym_names = {sym_lower}
+                sym_names = {sym_lower, sym_base}
                 name_map = {
                     "nvda": {"nvidia"}, "msft": {"microsoft"}, "googl": {"google", "alphabet"},
                     "meta": {"meta", "facebook"}, "aapl": {"apple"}, "amzn": {"amazon"},
@@ -457,8 +460,7 @@ def _analyze_news_sentiment(articles, symbols=None, threshold=0.5):
                     "9988": {"alibaba", "阿里"}, "0700": {"tencent", "腾讯"},
                     "btc": {"bitcoin"}, "eth": {"ethereum"}, "sol": {"solana"},
                 }
-                sym_key = sym_lower.split(".")[0].split("-")[0]
-                sym_names.update(name_map.get(sym_key, set()))
+                sym_names.update(name_map.get(sym_base, set()))
 
                 if any(name in text for name in sym_names):
                     if sym not in symbol_sentiment:
@@ -607,6 +609,23 @@ def _recommend_action(alerts):
             "team": "full_team",
             "prompt": f"Large price movement detected in {', '.join(symbols)}. Full team analysis needed.",
             "agents_needed": ["fundamental", "quant", "sentiment", "trader"],
+        }
+
+    if "REGULATORY_ACTION" in types:
+        return {
+            "action": "REGULATORY_RISK_REVIEW",
+            "team": "risk_focused",
+            "prompt": "Regulatory action detected. Assess exposure and compliance risk.",
+            "agents_needed": ["risk", "fundamental", "sentiment"],
+        }
+
+    if "NEWS_SENTIMENT_SHIFT" in types or "MARKET_SENTIMENT_SHIFT" in types:
+        symbols = [a["symbol"] for a in alerts if a["type"] == "NEWS_SENTIMENT_SHIFT"]
+        return {
+            "action": "SENTIMENT_ANALYSIS",
+            "team": "sentiment_focused",
+            "prompt": f"Significant news sentiment shift detected. Analyze impact on {', '.join(s for s in symbols) or 'portfolio'}.",
+            "agents_needed": ["sentiment", "fundamental", "trader"],
         }
 
     return {
