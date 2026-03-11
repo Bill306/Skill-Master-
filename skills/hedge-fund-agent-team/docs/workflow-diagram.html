@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hedge Fund Agent Team — 工作流程示意图</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: #0a0e27;
+            color: #e0e6ed;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 40px 20px 20px;
+            background: linear-gradient(180deg, #111640 0%, #0a0e27 100%);
+        }
+        .header h1 {
+            font-size: 2.2rem;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+        .header p {
+            color: #8892b0;
+            font-size: 1rem;
+        }
+
+        /* Navigation Tabs */
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            padding: 20px;
+            flex-wrap: wrap;
+        }
+        .tab-btn {
+            padding: 10px 24px;
+            border: 1px solid #2a3158;
+            border-radius: 24px;
+            background: transparent;
+            color: #8892b0;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+        .tab-btn:hover { border-color: #60a5fa; color: #60a5fa; }
+        .tab-btn.active {
+            background: linear-gradient(135deg, #1e3a5f, #2a1f5e);
+            border-color: #60a5fa;
+            color: #fff;
+            box-shadow: 0 0 20px rgba(96,165,250,0.15);
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* Main Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px 60px;
+        }
+
+        /* ===== WORKFLOW SECTION ===== */
+        .workflow {
+            position: relative;
+            padding: 20px 0;
+        }
+
+        /* Phase Block */
+        .phase {
+            position: relative;
+            margin-bottom: 32px;
+            animation: fadeInUp 0.6s ease forwards;
+            opacity: 0;
+        }
+        .phase:nth-child(1) { animation-delay: 0.1s; }
+        .phase:nth-child(2) { animation-delay: 0.2s; }
+        .phase:nth-child(3) { animation-delay: 0.3s; }
+        .phase:nth-child(4) { animation-delay: 0.4s; }
+        .phase:nth-child(5) { animation-delay: 0.5s; }
+        .phase:nth-child(6) { animation-delay: 0.6s; }
+        .phase:nth-child(7) { animation-delay: 0.7s; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .phase-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .phase-card {
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid;
+            position: relative;
+            overflow: hidden;
+        }
+        .phase-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+        }
+
+        /* Phase Colors */
+        .phase-trigger .phase-label { background: rgba(56,178,172,0.15); color: #38b2ac; }
+        .phase-trigger .phase-card { background: rgba(56,178,172,0.04); border-color: rgba(56,178,172,0.2); }
+        .phase-trigger .phase-card::before { background: linear-gradient(90deg, #38b2ac, transparent); }
+
+        .phase-0 .phase-label { background: rgba(96,165,250,0.15); color: #60a5fa; }
+        .phase-0 .phase-card { background: rgba(96,165,250,0.04); border-color: rgba(96,165,250,0.2); }
+        .phase-0 .phase-card::before { background: linear-gradient(90deg, #60a5fa, transparent); }
+
+        .phase-1 .phase-label { background: rgba(52,211,153,0.15); color: #34d399; }
+        .phase-1 .phase-card { background: rgba(52,211,153,0.04); border-color: rgba(52,211,153,0.2); }
+        .phase-1 .phase-card::before { background: linear-gradient(90deg, #34d399, transparent); }
+
+        .phase-2 .phase-label { background: rgba(251,146,60,0.15); color: #fb923c; }
+        .phase-2 .phase-card { background: rgba(251,146,60,0.04); border-color: rgba(251,146,60,0.2); }
+        .phase-2 .phase-card::before { background: linear-gradient(90deg, #fb923c, transparent); }
+
+        .phase-3 .phase-label { background: rgba(248,113,113,0.15); color: #f87171; }
+        .phase-3 .phase-card { background: rgba(248,113,113,0.04); border-color: rgba(248,113,113,0.2); }
+        .phase-3 .phase-card::before { background: linear-gradient(90deg, #f87171, transparent); }
+
+        .phase-4 .phase-label { background: rgba(167,139,250,0.15); color: #a78bfa; }
+        .phase-4 .phase-card { background: rgba(167,139,250,0.04); border-color: rgba(167,139,250,0.2); }
+        .phase-4 .phase-card::before { background: linear-gradient(90deg, #a78bfa, transparent); }
+
+        .phase-output .phase-label { background: rgba(250,204,21,0.15); color: #facc15; }
+        .phase-output .phase-card { background: rgba(250,204,21,0.04); border-color: rgba(250,204,21,0.2); }
+        .phase-output .phase-card::before { background: linear-gradient(90deg, #facc15, transparent); }
+
+        /* Agent Grid */
+        .agent-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .agent-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 12px;
+            padding: 16px;
+            transition: all 0.3s;
+            cursor: default;
+        }
+        .agent-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.06);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+        }
+        .agent-icon {
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+        }
+        .agent-name {
+            font-weight: 700;
+            font-size: 0.95rem;
+            margin-bottom: 2px;
+        }
+        .agent-name-cn {
+            font-size: 0.8rem;
+            color: #8892b0;
+            margin-bottom: 8px;
+        }
+        .agent-desc {
+            font-size: 0.78rem;
+            color: #8892b0;
+            line-height: 1.5;
+        }
+        .agent-output {
+            margin-top: 10px;
+            padding: 6px 10px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 6px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.72rem;
+            color: #60a5fa;
+        }
+
+        /* Arrow between phases */
+        .phase-arrow {
+            text-align: center;
+            padding: 8px 0;
+            color: #3b4578;
+            font-size: 1.4rem;
+            position: relative;
+        }
+        .phase-arrow .arrow-label {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            background: #0a0e27;
+            padding: 2px 12px;
+            font-size: 0.72rem;
+            color: #8892b0;
+            border: 1px solid #2a3158;
+            border-radius: 12px;
+            white-space: nowrap;
+        }
+
+        /* Data Sources Row */
+        .data-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .data-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: rgba(56,178,172,0.06);
+            border: 1px solid rgba(56,178,172,0.15);
+            border-radius: 10px;
+            flex: 1;
+            min-width: 160px;
+        }
+        .data-badge .badge-icon { font-size: 1.4rem; }
+        .data-badge .badge-name { font-weight: 600; font-size: 0.85rem; }
+        .data-badge .badge-desc { font-size: 0.72rem; color: #8892b0; }
+        .badge-free {
+            font-size: 0.6rem;
+            padding: 2px 6px;
+            background: rgba(52,211,153,0.15);
+            color: #34d399;
+            border-radius: 4px;
+            margin-left: 4px;
+        }
+        .badge-key {
+            font-size: 0.6rem;
+            padding: 2px 6px;
+            background: rgba(251,146,60,0.15);
+            color: #fb923c;
+            border-radius: 4px;
+            margin-left: 4px;
+        }
+
+        /* Trigger Row */
+        .trigger-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .trigger-item {
+            flex: 1;
+            min-width: 200px;
+            padding: 14px 18px;
+            background: rgba(56,178,172,0.06);
+            border: 1px solid rgba(56,178,172,0.15);
+            border-radius: 10px;
+        }
+        .trigger-item h4 { font-size: 0.9rem; margin-bottom: 6px; }
+        .trigger-item p { font-size: 0.78rem; color: #8892b0; line-height: 1.5; }
+
+        /* Single Agent Hero */
+        .agent-hero {
+            display: flex;
+            align-items: flex-start;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .agent-hero-icon { font-size: 2.5rem; }
+        .agent-hero-info { flex: 1; min-width: 200px; }
+        .agent-hero-info h3 { font-size: 1.1rem; margin-bottom: 4px; }
+        .agent-hero-info .subtitle { color: #8892b0; font-size: 0.85rem; margin-bottom: 10px; }
+        .agent-hero-bullets {
+            list-style: none;
+            padding: 0;
+        }
+        .agent-hero-bullets li {
+            padding: 4px 0;
+            font-size: 0.82rem;
+            color: #c0cad8;
+            position: relative;
+            padding-left: 18px;
+        }
+        .agent-hero-bullets li::before {
+            content: '›';
+            position: absolute;
+            left: 0;
+            color: #60a5fa;
+            font-weight: bold;
+        }
+
+        /* Output Grid */
+        .output-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+        }
+        .output-item {
+            padding: 16px;
+            background: rgba(250,204,21,0.04);
+            border: 1px solid rgba(250,204,21,0.12);
+            border-radius: 10px;
+        }
+        .output-item h4 {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.82rem;
+            color: #facc15;
+            margin-bottom: 6px;
+        }
+        .output-item p { font-size: 0.78rem; color: #8892b0; line-height: 1.5; }
+
+        /* Feedback Loop Banner */
+        .feedback-loop {
+            margin-top: 20px;
+            padding: 16px 20px;
+            background: linear-gradient(135deg, rgba(96,165,250,0.08), rgba(167,139,250,0.08));
+            border: 1px dashed rgba(167,139,250,0.3);
+            border-radius: 12px;
+            text-align: center;
+        }
+        .feedback-loop .loop-icon { font-size: 1.5rem; margin-bottom: 6px; }
+        .feedback-loop p { font-size: 0.82rem; color: #a78bfa; }
+
+        /* ===== AGENTS TAB ===== */
+        .agent-detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 20px;
+            padding: 20px 0;
+        }
+        .agent-detail-card {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 16px;
+            padding: 24px;
+            transition: all 0.3s;
+        }
+        .agent-detail-card:hover {
+            border-color: rgba(255,255,255,0.12);
+            box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+        }
+        .agent-detail-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+        .agent-detail-header .icon { font-size: 2.2rem; }
+        .agent-detail-header h3 { font-size: 1.05rem; }
+        .agent-detail-header .phase-tag {
+            font-size: 0.65rem;
+            padding: 3px 8px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        .tag-p0 { background: rgba(96,165,250,0.15); color: #60a5fa; }
+        .tag-p1 { background: rgba(52,211,153,0.15); color: #34d399; }
+        .tag-p2 { background: rgba(251,146,60,0.15); color: #fb923c; }
+        .tag-p3 { background: rgba(248,113,113,0.15); color: #f87171; }
+        .tag-p4 { background: rgba(167,139,250,0.15); color: #a78bfa; }
+        .agent-detail-body p {
+            font-size: 0.82rem;
+            color: #8892b0;
+            line-height: 1.7;
+            margin-bottom: 12px;
+        }
+        .agent-detail-body ul {
+            list-style: none;
+            padding: 0;
+        }
+        .agent-detail-body ul li {
+            font-size: 0.8rem;
+            color: #c0cad8;
+            padding: 3px 0 3px 16px;
+            position: relative;
+        }
+        .agent-detail-body ul li::before {
+            content: '•';
+            position: absolute;
+            left: 0;
+            font-weight: bold;
+        }
+        .agent-detail-output {
+            margin-top: 12px;
+            padding: 8px 12px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.75rem;
+            color: #60a5fa;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* ===== CONFIGS TAB ===== */
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            padding: 20px 0;
+        }
+        .config-card {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 16px;
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+        .config-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+        }
+        .config-card.c-full2::before { background: linear-gradient(90deg, #a78bfa, #f472b6); }
+        .config-card.c-full1::before { background: linear-gradient(90deg, #34d399, #60a5fa); }
+        .config-card.c-quick::before { background: linear-gradient(90deg, #facc15, #fb923c); }
+        .config-card.c-event::before { background: linear-gradient(90deg, #f87171, #fb923c); }
+
+        .config-card h3 { font-size: 1.05rem; margin-bottom: 4px; }
+        .config-meta {
+            font-size: 0.78rem;
+            color: #8892b0;
+            margin-bottom: 14px;
+        }
+        .config-agents {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 14px;
+        }
+        .config-agent-tag {
+            padding: 4px 10px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 8px;
+            font-size: 0.75rem;
+            color: #c0cad8;
+        }
+        .config-desc {
+            font-size: 0.8rem;
+            color: #8892b0;
+            line-height: 1.6;
+        }
+
+        /* ===== DATA TAB ===== */
+        .data-source-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            padding: 20px 0;
+        }
+        .data-source-card {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 16px;
+            padding: 24px;
+        }
+        .data-source-card h3 { font-size: 1.05rem; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+        .data-source-card .desc { font-size: 0.8rem; color: #8892b0; margin-bottom: 14px; }
+        .coverage-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.78rem;
+        }
+        .coverage-table th {
+            text-align: left;
+            color: #8892b0;
+            font-weight: 600;
+            padding: 6px 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .coverage-table td {
+            padding: 6px 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            color: #c0cad8;
+        }
+        .check { color: #34d399; }
+        .cross { color: #525c7a; }
+
+        /* Tooltip */
+        .veto-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            background: rgba(248,113,113,0.15);
+            color: #f87171;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header h1 { font-size: 1.5rem; }
+            .agent-grid { grid-template-columns: 1fr; }
+            .agent-detail-grid { grid-template-columns: 1fr; }
+            .config-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Hedge Fund Agent Team</h1>
+    <p>多智能体协作投资研究系统 — 工作流程示意图</p>
+</div>
+
+<div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('workflow')">工作流程</button>
+    <button class="tab-btn" onclick="switchTab('agents')">Agent 详情</button>
+    <button class="tab-btn" onclick="switchTab('configs')">团队配置</button>
+    <button class="tab-btn" onclick="switchTab('data')">数据源</button>
+</div>
+
+<div class="container">
+
+    <!-- ==================== WORKFLOW TAB ==================== -->
+    <div id="tab-workflow" class="tab-content active">
+        <div class="workflow">
+
+            <!-- Trigger -->
+            <div class="phase phase-trigger">
+                <div class="phase-label">TRIGGER 触发层</div>
+                <div class="phase-card">
+                    <div class="trigger-row">
+                        <div class="trigger-item">
+                            <h4>👤 用户手动触发</h4>
+                            <p>通过 Claude Code Agent Teams 界面发起分析请求，选择完整版/标准版/快速版配置</p>
+                        </div>
+                        <div class="trigger-item">
+                            <h4>🔔 事件监控自动触发</h4>
+                            <p>VIX 飙升 &gt;20% · 止损触发 · 财报发布 · FOMC/CPI · 异常成交量 · 价格跳空 &gt;3%</p>
+                        </div>
+                    </div>
+                    <div style="margin-top:14px;">
+                        <div style="font-size:0.78rem;color:#8892b0;margin-bottom:8px;">数据源 Data Sources</div>
+                        <div class="data-row">
+                            <div class="data-badge">
+                                <div class="badge-icon">📊</div>
+                                <div>
+                                    <div class="badge-name">Yahoo Finance <span class="badge-free">FREE</span></div>
+                                    <div class="badge-desc">价格 / 基本面 / 全球市场</div>
+                                </div>
+                            </div>
+                            <div class="data-badge">
+                                <div class="badge-icon">🏦</div>
+                                <div>
+                                    <div class="badge-name">Longbridge <span class="badge-key">API KEY</span></div>
+                                    <div class="badge-desc">港股实时 / 北向资金</div>
+                                </div>
+                            </div>
+                            <div class="data-badge">
+                                <div class="badge-icon">📈</div>
+                                <div>
+                                    <div class="badge-name">TradingView <span class="badge-free">FREE</span></div>
+                                    <div class="badge-desc">技术评级 / 社区分析</div>
+                                </div>
+                            </div>
+                            <div class="data-badge">
+                                <div class="badge-icon">📰</div>
+                                <div>
+                                    <div class="badge-name">AI News Digest</div>
+                                    <div class="badge-desc">新闻情绪 / 突发检测</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="phase-arrow">
+                ▼
+                <span class="arrow-label">初始化 → 加载配置</span>
+            </div>
+
+            <!-- Phase 0 -->
+            <div class="phase phase-0">
+                <div class="phase-label">PHASE 0 — 历史回顾</div>
+                <div class="phase-card">
+                    <div class="agent-hero">
+                        <div class="agent-hero-icon">📜</div>
+                        <div class="agent-hero-info">
+                            <h3>Historian 历史学家</h3>
+                            <div class="subtitle">最先运行 · 为所有后续 Agent 提供上下文校准</div>
+                            <ul class="agent-hero-bullets">
+                                <li>回顾过去 30 天的交易建议记录</li>
+                                <li>计算每笔交易的实际 P&L（盈亏）</li>
+                                <li>使用贝叶斯方法计算每个 Agent 的可信度评分</li>
+                                <li>生成 Trust Weight（0.5x ~ 1.5x）注入后续所有 Agent</li>
+                                <li>识别系统性偏差："宏观分析师过于看空 20%"</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="phase-arrow">
+                ▼
+                <span class="arrow-label">可信度评分注入所有 Phase 1 Agent</span>
+            </div>
+
+            <!-- Phase 1 -->
+            <div class="phase phase-1">
+                <div class="phase-label">PHASE 1 — 独立研究（5 个 Agent 并行）</div>
+                <div class="phase-card">
+                    <div class="agent-grid">
+                        <div class="agent-card">
+                            <div class="agent-icon">🌍</div>
+                            <div class="agent-name">Macro Analyst</div>
+                            <div class="agent-name-cn">宏观分析师</div>
+                            <div class="agent-desc">
+                                监控央行政策（Fed/ECB/PBoC）<br>
+                                分析收益率曲线、通胀、就业<br>
+                                跟踪 DXY/Gold/Oil/VIX<br>
+                                判定市场体制：RISK-ON / OFF
+                            </div>
+                            <div class="agent-output">→ macro.json</div>
+                        </div>
+                        <div class="agent-card">
+                            <div class="agent-icon">📈</div>
+                            <div class="agent-name">Quant Researcher</div>
+                            <div class="agent-name-cn">量化研究员</div>
+                            <div class="agent-desc">
+                                计算动量（1M/3M/6M/12M）<br>
+                                波动率体制分析<br>
+                                均值回归 Z-Score<br>
+                                构建相关性矩阵 · 异常检测
+                            </div>
+                            <div class="agent-output">→ quant.json</div>
+                        </div>
+                        <div class="agent-card">
+                            <div class="agent-icon">💰</div>
+                            <div class="agent-name">Fundamental Analyst</div>
+                            <div class="agent-name-cn">基本面分析师</div>
+                            <div class="agent-desc">
+                                财报分析 · 收入增长 · 利润率<br>
+                                P/E, P/S, EV/EBITDA 估值<br>
+                                DCF 模型 · 可比公司分析<br>
+                                评级: STRONG BUY → STRONG SELL
+                            </div>
+                            <div class="agent-output">→ fundamental.json</div>
+                        </div>
+                        <div class="agent-card">
+                            <div class="agent-icon">💬</div>
+                            <div class="agent-name">Sentiment Analyst</div>
+                            <div class="agent-name-cn">情绪分析师</div>
+                            <div class="agent-desc">
+                                AI News Digest 情绪分析<br>
+                                VIX 水平 · Put/Call 比率<br>
+                                ETF 资金流向 · 板块轮动<br>
+                                北向资金监控（港股通）
+                            </div>
+                            <div class="agent-output">→ sentiment.json</div>
+                        </div>
+                        <div class="agent-card">
+                            <div class="agent-icon">🎯</div>
+                            <div class="agent-name">Trader</div>
+                            <div class="agent-name-cn">交易员</div>
+                            <div class="agent-desc">
+                                RSI/MACD/BB/StochRSI 技术分析<br>
+                                支撑位/阻力位 · 枢轴点<br>
+                                入场价/止损/止盈 · 仓位大小<br>
+                                Kelly Criterion · TradingView 评级
+                            </div>
+                            <div class="agent-output">→ trader.json</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="phase-arrow">
+                ▼
+                <span class="arrow-label">所有研究报告传递给 Phase 2</span>
+            </div>
+
+            <!-- Phase 2 -->
+            <div class="phase phase-2">
+                <div class="phase-label">PHASE 2 — 交叉质疑</div>
+                <div class="phase-card">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                        <div>
+                            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                                <span style="font-size:2rem;">🔴</span>
+                                <div>
+                                    <div style="font-weight:700;font-size:1rem;">Red Team 红队</div>
+                                    <div style="font-size:0.78rem;color:#fb923c;">强制反对 · 不可同意团队共识</div>
+                                </div>
+                            </div>
+                            <ul class="agent-hero-bullets">
+                                <li>每个 LONG 建议 → 构建最强 BEAR case</li>
+                                <li>每个 SELL 建议 → 构建 BULL case</li>
+                                <li>寻找历史上类似设置失败的先例</li>
+                                <li>识别隐藏风险：集中度/流动性/监管</li>
+                                <li>评分置信度：HIGH / MEDIUM / LOW</li>
+                            </ul>
+                            <div class="agent-output" style="margin-top:12px;">→ red_team.json</div>
+                        </div>
+                        <div>
+                            <div style="font-weight:700;font-size:1rem;margin-bottom:12px;">⚡ 跨 Agent 质疑</div>
+                            <ul class="agent-hero-bullets">
+                                <li><strong>Trader → Fundamental：</strong>"估值合理但图表建议等待回调"</li>
+                                <li><strong>Quant → Sentiment：</strong>用数据验证或反驳情绪信号</li>
+                                <li><strong>Macro → All：</strong>宏观体制约束所有推荐</li>
+                                <li><strong>Historian → Risk：</strong>提供历史信任权重参考</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="phase-arrow">
+                ▼
+                <span class="arrow-label">质疑报告 + 研究报告 → 风控审查</span>
+            </div>
+
+            <!-- Phase 3 -->
+            <div class="phase phase-3">
+                <div class="phase-label">PHASE 3 — 风险审查</div>
+                <div class="phase-card">
+                    <div class="agent-hero">
+                        <div class="agent-hero-icon">🛡️</div>
+                        <div class="agent-hero-info">
+                            <h3>Risk Manager 风控经理 <span class="veto-badge">VETO 否决权</span></h3>
+                            <div class="subtitle">读取所有 Phase 1 + Phase 2 输出 · 有权否决任何交易</div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                                <div>
+                                    <div style="font-weight:600;font-size:0.82rem;margin-bottom:6px;color:#f87171;">风险指标</div>
+                                    <ul class="agent-hero-bullets">
+                                        <li>VaR 95% / 99%（1日）</li>
+                                        <li>Sharpe / Sortino 比率</li>
+                                        <li>Beta to S&P 500</li>
+                                        <li>最大回撤 Max Drawdown</li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <div style="font-weight:600;font-size:0.82rem;margin-bottom:6px;color:#f87171;">压力测试</div>
+                                    <ul class="agent-hero-bullets">
+                                        <li>2008 金融危机 (-50%)</li>
+                                        <li>COVID 崩盘 (-34%)</li>
+                                        <li>加息 +200bps</li>
+                                        <li>中国硬着陆 · AI泡沫破裂</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div style="margin-top:12px;padding:10px 14px;background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);border-radius:8px;font-size:0.8rem;">
+                                <strong style="color:#f87171;">合规红线：</strong>
+                                <span style="color:#c0cad8;">单仓 ≤10% · 行业 ≤30% · 国家 ≤50% · 默认止损 7% · 默认止盈 15% · 相关性警告 &gt;0.80</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="phase-arrow">
+                ▼
+                <span class="arrow-label">风控通过（或 VETO 否决部分交易）</span>
+            </div>
+
+            <!-- Phase 4 -->
+            <div class="phase phase-4">
+                <div class="phase-label">PHASE 4 — 综合决策</div>
+                <div class="phase-card">
+                    <div class="agent-hero">
+                        <div class="agent-hero-icon">👔</div>
+                        <div class="agent-hero-info">
+                            <h3>Portfolio Manager 投资组合经理</h3>
+                            <div class="subtitle">团队 Lead · 读取所有 Agent 输出 · 产出最终决策</div>
+                            <ul class="agent-hero-bullets">
+                                <li>按 Historian 可信度评分加权所有建议</li>
+                                <li>逐一回应 Red Team 质疑（反驳或调整仓位）</li>
+                                <li>解决 Agent 之间的分歧与矛盾</li>
+                                <li>接受 Risk Manager 的 VETO 决定</li>
+                                <li>生成最终《投资备忘录》含异议观点</li>
+                                <li>通知 Historian 记录所有建议用于未来评估</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="phase-arrow">
+                ▼
+                <span class="arrow-label">最终输出</span>
+            </div>
+
+            <!-- Output -->
+            <div class="phase phase-output">
+                <div class="phase-label">OUTPUT 最终输出</div>
+                <div class="phase-card">
+                    <div class="output-grid">
+                        <div class="output-item">
+                            <h4>📋 investment_memo.md</h4>
+                            <p>市场体制判断 · 可信度表 · 交易建议（入场/止损/目标/仓位）· Red Team 质疑与 PM 回应 · 风险报告 · 异议观点</p>
+                        </div>
+                        <div class="output-item">
+                            <h4>📊 Agent JSON Reports</h4>
+                            <p>macro.json · quant.json · fundamental.json · sentiment.json · trader.json · red_team.json · risk.json</p>
+                        </div>
+                        <div class="output-item">
+                            <h4>📝 trade_history.jsonl</h4>
+                            <p>持久化交易记录，每条建议附带时间戳、Agent 来源、置信度，用于未来 P&L 追踪</p>
+                        </div>
+                        <div class="output-item">
+                            <h4>🔄 agent_credibility.json</h4>
+                            <p>更新后的贝叶斯可信度评分，供下一次会话的 Historian 使用</p>
+                        </div>
+                    </div>
+                    <div class="feedback-loop">
+                        <div class="loop-icon">🔄</div>
+                        <p><strong>反馈循环：</strong>30 天后 Historian 自动回顾实际股价表现 → 计算 P&L → 调整可信度评分 → 偏差大的 Agent 被降权，准确的 Agent 被升权 → 下一次团队分析更精准</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ==================== AGENTS TAB ==================== -->
+    <div id="tab-agents" class="tab-content">
+        <div class="agent-detail-grid">
+            <div class="agent-detail-card">
+                <div class="agent-detail-header">
+                    <div class="icon">📜</div>
+                    <div>
+                        <h3>Historian 历史学家</h3>
+                        <span class="phase-tag tag-p0">PHASE 0</span>
+                    </div>
+                </div>
+                <div class="agent-detail-body">
+                    <p>最先运行的 Agent，负责为整个团队提供历史上下文和校准参数。</p>
+                    <ul>
+                        <li>回顾过去 30 天所有交易建议</li>
+                        <li>对比建议价 vs 实际价格计算 P&L</li>
+                        <li>贝叶斯更新每个 Agent 的可信度</li>
+                        <li>生成 Trust Weight 0.5x ~ 1.5x</li>
+                        <li>识别偏差："Macro 过于看空 20%"</li>
+                        <li>为后续 Agent 提供校准上下文</li>
+                    </ul>
+                    <div class="agent-detail-output">📁 agent_credibility.json · trade_history.jsonl</div>
+                </div>
+            </div>
+
+            <div class="agent-detail-card">
+                <div class="agent-detail-header">
+                    <div class="icon">🌍</div>
+                    <div>
+                        <h3>Macro Analyst 宏观分析师</h3>
+                        <span class="phase-tag tag-p1">PHASE 1</span>
+                    </div>
+                </div>
+                <div class="agent-detail-body">
+                    <p>监控全球宏观经济环境，判定当前市场体制。</p>
+                    <ul>
+                        <li>跟踪 Fed / ECB / PBoC / BoJ 央行政策</li>
+                        <li>分析收益率曲线（US 2Y/10Y spread）</li>
+                        <li>监控通胀（CPI/PCE）、就业（NFP）</li>
+                        <li>跟踪 DXY、Gold、Oil、VIX、USD/CNY</li>
+                        <li>体制分类：RISK-ON / RISK-OFF / TRANSITION</li>
+                        <li>识别催化剂 · Top 3 宏观主题</li>
+                    </ul>
+                    <div class="agent-detail-output">📁 macro.json</div>
+                </div>
+            </div>
+
+            <div class="agent-detail-card">
+                <div class="agent-detail-header">
+                    <div class="icon">📈</div>
+                    <div>
+                        <h3>Quant Researcher 量化研究员</h3>
+                        <span class="phase-tag tag-p1">PHASE 1</span>
+                    </div>
+                </div>
+                <div class="agent-detail-body">
+                    <p>用定量方法分析市场数据，发现统计异常和因子信号。</p>
+                    <ul>
+                        <li>动量因子：1M / 3M / 6M / 12M 收益</li>
+                        <li>波动率体制分析（已实现波动率）</li>
+                        <li>均值回归 Z-Score vs 移动均线</li>
+                        <li>构建跨资产相关性矩阵</li>
+                        <li>统计异常检测 · 体制变化识别</li>
+                    </ul>
+                    <div class="agent-detail-output">📁 quant.json</div>
+                </div>
+            </div>
+
+            <div class="agent-detail-card">
+                <div class="agent-detail-header">
+                    <div class="icon">💰</div>
+                    <div>
+                        <h3>Fundamental Analyst 基本面分析师</h3>
+                        <span class="phase-tag tag-p1">PHASE 1</span>
+                    </div>
+                </div>
+                <div class="agent-detail-body">
+                    <p>深入分析公司财务数据和估值模型。</p>
+                    <ul>
+                        <li>财报分析：收入增长、利润率、FCF</li>
+                        <li>P/E, P/S, EV/EBITDA vs 行业均值</li>
+                        <li>DCF 折现模型 · 可比公司分析</li>
+                        <li>内部人交易 · 分析师评级修订</li>
+                        <li>评级：STRONG BUY → STRONG SELL</li>
+                    </ul>
+                    <div class="agent-detail-output">📁 fundamental.json</div>
+                </div>
+            </div>
+
+            <div class="agent-detail-card">
+                <div class="agent-detail-header">
+                    <div class="icon">💬</div>
+                    <div>
+                        <h3>Sentiment Analyst 情绪分析师</h3>
+                        <span class="phase-tag tag-p1">PHASE 1</span>
+                    </div>
+                </div>
+                <div class="agent-detail-body">
+                    <p>分析市场心理和资金流向。</p>
+                    <ul>
+                        <li>AI News Digest 新闻情绪分析</li>
+                        <li>VIX 水平 · Put/Call 比率</li>
+                        <li>ETF 资金流向 · 板块轮动趋势</li>
+                        <li>北向资金监控（港股通）via Longbridge</li>
+                        <li>情绪评分：-1.0（极度恐慌）~ +1.0（极度贪婪）</li>
+                    </ul>
+                    <div class="agent-detail-output">📁 sentiment.json</div>
+                </div>
+            </div>
+
+            <div class="agent-detail-card">
+                <div class="agent-detail-header">
+                    <div class="icon">🎯</div>
+                    <div>
+                        <h3>Trader 交易员</h3>
+                        <span class="phase-tag tag-p1">PHASE 1</span>
+                    </div>
+                </div>
+                <div class="agent-detail-body">
+                    <p>技术分析专家，负责确定精确的交易执行方案。</p>
+                    <ul>
+                        <li>RSI(14) / MACD / Bollinger Bands / StochRSI</li>
+                        <li>支撑位/阻力位 · 枢轴点分析</li>
+                        <li>入场价（LIMIT vs MARKET）· 止损（ATR-based）· 止盈</li>
+                        <li>Kelly Criterion / 固定分数仓位管理</li>
+                        <li>整合 TradingView 社区评级</li>
+                        <li>质疑 Fundamental："估值好但等回调"</li>
+                    </ul>
+                    <div class="agent-detail-output">📁 trader.json</div>
+                </div>
+            </div>
+
+            <div class="agent-detail-card">
+                <div class="agent-detail-header">
+                    <div class="icon">🔴</div>
+                    <div>
+                        <h3>Red Team 红队</h3>
+                        <span class="phase-tag tag-p2">PHASE 2</span>
+                    </div>
+                </div>
+                <div class="agent-detail-body">
+                    <p><strong style="color:#fb923c;">强制反对 — 不可同意团队共识。</strong>被授权扮演魔鬼辩护人。</p>
+                    <ul>
+                        <li>每个 LONG → 构建最强 BEAR case</li>
+                        <li>每个 SELL → 构建 BULL case</li>
+                        <li>搜索历史上类似设置失败的先例</li>
+                        <li>识别隐藏风险：集中度/相关性/流动性/监管</li>
+                        <li>评分置信度：HIGH / MEDIUM / LOW</li>
+                        <li>质疑宏观体制判断</li>
+                    </ul>
+                    <div class="agent-detail-output">📁 red_team.json</div>
+                </div>
+            </div>
+
+            <div class="agent-detail-card">
+                <div class="agent-detail-header">
+                    <div class="icon">🛡️</div>
+                    <div>
+                        <h3>Risk Manager 风控经理 <span class="veto-badge">VETO</span></h3>
+                        <span class="phase-tag tag-p3">PHASE 3</span>
+                    </div>
+                </div>
+                <div class="agent-detail-body">
+                    <p>拥有否决权的风控经理，确保投资组合符合风险参数。</p>
+                    <ul>
+                        <li>VaR 95% / 99%（1日）计算</li>
+                        <li>压力测试：2008/COVID/加息/中国/AI泡沫</li>
+                        <li>合规：单仓≤10% / 行业≤30% / 国家≤50%</li>
+                        <li>Sharpe / Sortino / Beta / Max Drawdown</li>
+                        <li>整合 Red Team 风险到评估中</li>
+                        <li><strong style="color:#f87171;">有权 VETO 违规交易</strong></li>
+                    </ul>
+                    <div class="agent-detail-output">📁 risk.json</div>
+                </div>
+            </div>
+
+            <div class="agent-detail-card">
+                <div class="agent-detail-header">
+                    <div class="icon">👔</div>
+                    <div>
+                        <h3>Portfolio Manager 组合经理</h3>
+                        <span class="phase-tag tag-p4">PHASE 4</span>
+                    </div>
+                </div>
+                <div class="agent-detail-body">
+                    <p>团队 Lead，负责综合所有 Agent 输出并做出最终投资决策。</p>
+                    <ul>
+                        <li>读取所有 /tmp/hedge-fund/*.json</li>
+                        <li>按 Historian 可信度评分加权建议</li>
+                        <li>逐一回应 Red Team 质疑</li>
+                        <li>解决 Agent 分歧与矛盾</li>
+                        <li>接受 Risk Manager VETO</li>
+                        <li>生成最终投资备忘录 + 异议记录</li>
+                    </ul>
+                    <div class="agent-detail-output">📁 investment_memo.md</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== CONFIGS TAB ==================== -->
+    <div id="tab-configs" class="tab-content">
+        <div class="config-grid">
+            <div class="config-card c-full2">
+                <h3>🏆 完整版 v2</h3>
+                <div class="config-meta">8 Agents · ~150-200K tokens · 最全面分析</div>
+                <div class="config-agents">
+                    <span class="config-agent-tag">📜 Historian</span>
+                    <span class="config-agent-tag">🌍 Macro</span>
+                    <span class="config-agent-tag">📈 Quant</span>
+                    <span class="config-agent-tag">💰 Fundamental</span>
+                    <span class="config-agent-tag">💬 Sentiment</span>
+                    <span class="config-agent-tag">🎯 Trader</span>
+                    <span class="config-agent-tag">🔴 Red Team</span>
+                    <span class="config-agent-tag">🛡️ Risk</span>
+                </div>
+                <div class="config-desc">包含历史回顾 + 红队质疑的完整工作流。适用于重大投资决策、月度/季度组合再平衡、新增核心持仓。</div>
+            </div>
+
+            <div class="config-card c-full1">
+                <h3>⭐ 标准版 v1</h3>
+                <div class="config-meta">6 Agents · ~80-120K tokens · 标准分析</div>
+                <div class="config-agents">
+                    <span class="config-agent-tag">🌍 Macro</span>
+                    <span class="config-agent-tag">📈 Quant</span>
+                    <span class="config-agent-tag">💰 Fundamental</span>
+                    <span class="config-agent-tag">💬 Sentiment</span>
+                    <span class="config-agent-tag">🎯 Trader</span>
+                    <span class="config-agent-tag">🛡️ Risk</span>
+                </div>
+                <div class="config-desc">标准六人团队，无 Historian 和 Red Team。适用于日常市场分析、常规交易决策。</div>
+            </div>
+
+            <div class="config-card c-quick">
+                <h3>⚡ 快速版</h3>
+                <div class="config-meta">3 Agents · ~40-60K tokens · 快速检查</div>
+                <div class="config-agents">
+                    <span class="config-agent-tag">🔬 Researcher</span>
+                    <span class="config-agent-tag">🛡️ Risk</span>
+                    <span class="config-agent-tag">🎯 Trader</span>
+                </div>
+                <div class="config-desc">最精简配置，适用于每日快速检查、单一标的分析、盘中快速决策。</div>
+            </div>
+
+            <div class="config-card c-event">
+                <h3>🚨 紧急模式</h3>
+                <div class="config-meta">3 Agents · ~30-50K tokens · VIX飙升 / 止损触发</div>
+                <div class="config-agents">
+                    <span class="config-agent-tag">🌍 Macro</span>
+                    <span class="config-agent-tag">🛡️ Risk</span>
+                    <span class="config-agent-tag">🎯 Trader</span>
+                </div>
+                <div class="config-desc">当 VIX 日内飙升 &gt;20%、止损被触发、或市场出现极端波动时自动触发。优先评估风险敞口和对冲策略。</div>
+            </div>
+
+            <div class="config-card c-event">
+                <h3>📊 财报响应</h3>
+                <div class="config-meta">4 Agents · ~60-80K tokens · 盈利发布后</div>
+                <div class="config-agents">
+                    <span class="config-agent-tag">💰 Fundamental</span>
+                    <span class="config-agent-tag">💬 Sentiment</span>
+                    <span class="config-agent-tag">🎯 Trader</span>
+                    <span class="config-agent-tag">🔴 Red Team</span>
+                </div>
+                <div class="config-desc">个股财报发布后触发。Fundamental 解读业绩，Sentiment 分析市场反应，Trader 给出操作建议，Red Team 质疑共识。</div>
+            </div>
+
+            <div class="config-card c-event">
+                <h3>🏛️ FOMC / CPI 响应</h3>
+                <div class="config-meta">4 Agents · ~60-80K tokens · 宏观事件</div>
+                <div class="config-agents">
+                    <span class="config-agent-tag">🌍 Macro</span>
+                    <span class="config-agent-tag">📈 Quant</span>
+                    <span class="config-agent-tag">🛡️ Risk</span>
+                    <span class="config-agent-tag">🎯 Trader</span>
+                </div>
+                <div class="config-desc">美联储利率决议、CPI/PPI 数据发布后触发。Macro 解读政策影响，Quant 分析历史模式，Risk 评估敞口，Trader 调整策略。</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== DATA TAB ==================== -->
+    <div id="tab-data" class="tab-content">
+        <div class="data-source-grid">
+            <div class="data-source-card">
+                <h3>📊 Yahoo Finance <span class="badge-free">FREE</span></h3>
+                <div class="desc">无需 API Key · 通过 yfinance 库访问</div>
+                <table class="coverage-table">
+                    <tr><th>数据类型</th><th>覆盖</th></tr>
+                    <tr><td>美股价格（实时延迟15分钟）</td><td class="check">✓</td></tr>
+                    <tr><td>港股价格</td><td class="check">✓</td></tr>
+                    <tr><td>加密货币</td><td class="check">✓</td></tr>
+                    <tr><td>指数 / 商品 / 外汇</td><td class="check">✓</td></tr>
+                    <tr><td>基本面数据（P/E, 收入, 利润）</td><td class="check">✓</td></tr>
+                    <tr><td>历史 K 线（最远 30 年）</td><td class="check">✓</td></tr>
+                    <tr><td>期权链</td><td class="check">✓</td></tr>
+                    <tr><td>实时行情</td><td class="cross">✗</td></tr>
+                </table>
+            </div>
+
+            <div class="data-source-card">
+                <h3>🏦 Longbridge <span class="badge-key">API KEY</span></h3>
+                <div class="desc">需要 LONGPORT_APP_KEY + APP_SECRET + ACCESS_TOKEN</div>
+                <table class="coverage-table">
+                    <tr><th>数据类型</th><th>覆盖</th></tr>
+                    <tr><td>港股实时行情</td><td class="check">✓</td></tr>
+                    <tr><td>美股实时行情</td><td class="check">✓</td></tr>
+                    <tr><td>A股（沪深港通标的）</td><td class="check">✓</td></tr>
+                    <tr><td>北向资金流向</td><td class="check">✓</td></tr>
+                    <tr><td>经纪商队列数据</td><td class="check">✓</td></tr>
+                    <tr><td>资金分布</td><td class="check">✓</td></tr>
+                    <tr><td>基本面数据</td><td class="cross">✗</td></tr>
+                    <tr><td>加密货币</td><td class="cross">✗</td></tr>
+                </table>
+            </div>
+
+            <div class="data-source-card">
+                <h3>📈 TradingView <span class="badge-free">FREE</span></h3>
+                <div class="desc">通过 tradingview-ta 库 · 非官方 API</div>
+                <table class="coverage-table">
+                    <tr><th>数据类型</th><th>覆盖</th></tr>
+                    <tr><td>技术分析评级（BUY/SELL）</td><td class="check">✓</td></tr>
+                    <tr><td>振荡器评级（RSI/MACD/Stoch）</td><td class="check">✓</td></tr>
+                    <tr><td>均线评级（SMA/EMA）</td><td class="check">✓</td></tr>
+                    <tr><td>指标数值</td><td class="check">✓</td></tr>
+                    <tr><td>多时间框架分析</td><td class="check">✓</td></tr>
+                    <tr><td>原始 K 线数据</td><td class="cross">✗</td></tr>
+                    <tr><td>绘图 / 图表</td><td class="cross">✗</td></tr>
+                </table>
+            </div>
+
+            <div class="data-source-card">
+                <h3>📰 AI News Digest</h3>
+                <div class="desc">项目内置 Skill · 新闻聚合与情绪分析</div>
+                <table class="coverage-table">
+                    <tr><th>数据类型</th><th>覆盖</th></tr>
+                    <tr><td>新闻标题情绪分析</td><td class="check">✓</td></tr>
+                    <tr><td>突发新闻检测</td><td class="check">✓</td></tr>
+                    <tr><td>社交媒体热度</td><td class="check">✓</td></tr>
+                    <tr><td>行业新闻聚合</td><td class="check">✓</td></tr>
+                    <tr><td>监管动态追踪</td><td class="check">✓</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <div style="margin-top:30px;">
+            <h3 style="margin-bottom:14px;">🌏 资产覆盖范围</h3>
+            <div class="agent-grid">
+                <div class="agent-card">
+                    <div class="agent-icon">🇺🇸</div>
+                    <div class="agent-name">美股 AI / 科技</div>
+                    <div class="agent-desc" style="font-family:monospace;font-size:0.75rem;line-height:1.8;">
+                        NVDA · MSFT · AAPL · GOOGL<br>
+                        META · AMZN · TSM · AVGO<br>
+                        AMD · SMCI · MRVL · ARM
+                    </div>
+                </div>
+                <div class="agent-card">
+                    <div class="agent-icon">🇭🇰</div>
+                    <div class="agent-name">港股 / 中概</div>
+                    <div class="agent-desc" style="font-family:monospace;font-size:0.75rem;line-height:1.8;">
+                        9988.HK 阿里巴巴<br>
+                        0700.HK 腾讯<br>
+                        9888.HK 百度<br>
+                        3690.HK 美团 · 1810.HK 小米
+                    </div>
+                </div>
+                <div class="agent-card">
+                    <div class="agent-icon">₿</div>
+                    <div class="agent-name">加密货币</div>
+                    <div class="agent-desc" style="font-family:monospace;font-size:0.75rem;line-height:1.8;">
+                        BTC-USD · ETH-USD · SOL-USD
+                    </div>
+                </div>
+                <div class="agent-card">
+                    <div class="agent-icon">📊</div>
+                    <div class="agent-name">宏观指标</div>
+                    <div class="agent-desc" style="font-family:monospace;font-size:0.75rem;line-height:1.8;">
+                        ^GSPC · ^NDX · ^HSI · ^VIX<br>
+                        ^TNX · GC=F · CL=F<br>
+                        DXY · USDCNY
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function switchTab(name) {
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+        document.getElementById('tab-' + name).classList.add('active');
+        event.target.classList.add('active');
+        // Re-trigger animations
+        document.querySelectorAll('#tab-' + name + ' .phase').forEach(p => {
+            p.style.animation = 'none';
+            p.offsetHeight;
+            p.style.animation = '';
+        });
+    }
+</script>
+
+</body>
+</html>
