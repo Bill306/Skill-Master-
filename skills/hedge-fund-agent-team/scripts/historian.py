@@ -243,6 +243,13 @@ def review_recommendations(days=30):
     symbols_needed = set()
     for rec in records:
         if rec["status"] == "OPEN" and rec.get("entry_price") and not rec.get("symbol", "").startswith("_"):
+            # Only review recommendations within the specified days window
+            try:
+                rec_ts = _parse_iso_datetime(rec.get("timestamp", ""))
+                if rec_ts and rec_ts < cutoff:
+                    continue  # Too old, skip
+            except (ValueError, TypeError):
+                pass  # If unparseable, include it
             symbols_needed.add(rec["symbol"])
 
     # Fetch current prices
@@ -267,6 +274,15 @@ def review_recommendations(days=30):
         entry = rec.get("entry_price")
         symbol = rec.get("symbol", "")
         direction = rec.get("direction", "")
+
+        # Skip records outside the review window
+        try:
+            rec_ts = _parse_iso_datetime(rec.get("timestamp", ""))
+            if rec_ts and rec_ts < cutoff:
+                updated.append(rec)
+                continue
+        except (ValueError, TypeError):
+            pass
 
         if not entry or symbol.startswith("_") or symbol not in current_prices:
             updated.append(rec)
@@ -408,7 +424,6 @@ def calculate_credibility():
         if reviewed == 0:
             score = 50.0  # default neutral
         else:
-            win_rate = stats["wins"] / reviewed
             # Bayesian-adjusted: pull toward 50% with small samples
             # Score = (wins + 2) / (reviewed + 4) — Laplace smoothing
             adj_win_rate = (stats["wins"] + 2) / (reviewed + 4)
@@ -450,8 +465,18 @@ def calculate_credibility():
         "note": "Scores use Laplace smoothing — small samples pull toward 50%. Scores become more reliable after 10+ reviewed calls.",
     }
 
-    with open(CREDIBILITY_FILE, "w", encoding="utf-8") as f:
-        json.dump(output, f, indent=2, ensure_ascii=False)
+    import tempfile
+    fd, tmp_path = tempfile.mkstemp(dir=str(DATA_DIR), suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(output, f, indent=2, ensure_ascii=False)
+        os.replace(tmp_path, str(CREDIBILITY_FILE))
+    except Exception:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
 
     print(json.dumps(output, indent=2, ensure_ascii=False))
     return output
@@ -475,10 +500,10 @@ def generate_report(days=90):
     period_records = []
     for r in records:
         try:
-            ts = datetime.fromisoformat(r["timestamp"])
-            if ts >= cutoff:
+            ts = _parse_iso_datetime(r.get("timestamp", ""))
+            if ts is None or ts >= cutoff:
                 period_records.append(r)
-        except (KeyError, ValueError):
+        except (KeyError, ValueError, TypeError):
             period_records.append(r)
 
     if not period_records:
@@ -488,7 +513,7 @@ def generate_report(days=90):
     # Aggregate stats
     by_agent = {}
     by_symbol = {}
-    by_direction = {"LONG": [], "SHORT": []}
+    by_direction = {"LONG": [], "SHORT": [], "COUNTER": []}
     by_confidence = {"HIGH": [], "MEDIUM": [], "LOW": []}
     by_session = {}
 
@@ -509,8 +534,10 @@ def generate_report(days=90):
                 group[key] = []
             group[key].append(r)
 
-        if direction in by_direction and pnl is not None:
-            by_direction[direction].append(pnl)
+        # Map COUNTER_LONG/COUNTER_SHORT to COUNTER bucket
+        dir_key = "COUNTER" if direction.startswith("COUNTER_") else direction
+        if dir_key in by_direction and pnl is not None:
+            by_direction[dir_key].append(pnl)
         if confidence in by_confidence and pnl is not None:
             by_confidence[confidence].append(pnl)
 
@@ -554,6 +581,31 @@ def generate_report(days=90):
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _parse_iso_datetime(s):
+    """Parse an ISO 8601 datetime string, compatible with Python 3.7+.
+
+    Python <3.11 fromisoformat() cannot handle '+00:00' timezone suffix,
+    so we strip/normalize it before parsing.
+    """
+    if not s:
+        return None
+    # Replace the +00:00 / +HH:MM suffix with a form Python 3.7 understands
+    # or strip it and assume UTC
+    s = s.strip()
+    if s.endswith("Z"):
+        s = s[:-1] + "+00:00"
+    try:
+        return datetime.fromisoformat(s)
+    except ValueError:
+        # Python <3.11: strip timezone and treat as UTC
+        if "+" in s:
+            s = s[: s.rfind("+")]
+        elif s.count("-") > 2:
+            # Handle -HH:MM offset at the end
+            s = s[:19]
+        return datetime.fromisoformat(s).replace(tzinfo=timezone.utc)
 
 
 def _load_history():
@@ -600,12 +652,12 @@ def purge_old(older_than_days):
     purged = 0
     for r in records:
         try:
-            ts = datetime.fromisoformat(r["timestamp"])
-            if ts >= cutoff:
+            ts = _parse_iso_datetime(r.get("timestamp", ""))
+            if ts is None or ts >= cutoff:
                 kept.append(r)
             else:
                 purged += 1
-        except (KeyError, ValueError):
+        except (KeyError, ValueError, TypeError):
             kept.append(r)
 
     _save_history(kept)

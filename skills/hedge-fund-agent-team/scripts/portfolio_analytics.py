@@ -137,9 +137,10 @@ def calc_sharpe(returns_list, risk_free_annual=0.05):
     arr = np.array(returns_list)
     daily_rf = risk_free_annual / 252
     excess = arr - daily_rf
-    if np.std(excess) == 0:
+    std = np.std(excess, ddof=1)
+    if std == 0:
         return 0.0
-    return round(float(np.mean(excess) / np.std(excess) * math.sqrt(252)), 4)
+    return round(float(np.mean(excess) / std * math.sqrt(252)), 4)
 
 
 def calc_sortino(returns_list, risk_free_annual=0.05):
@@ -151,9 +152,10 @@ def calc_sortino(returns_list, risk_free_annual=0.05):
     daily_rf = risk_free_annual / 252
     excess = arr - daily_rf
     downside = arr[arr < daily_rf] - daily_rf
-    if len(downside) == 0 or np.std(downside) == 0:
+    downside_std = np.std(downside, ddof=1) if len(downside) > 1 else 0.0
+    if len(downside) == 0 or downside_std == 0:
         return None
-    return round(float(np.mean(excess) / np.std(downside) * math.sqrt(252)), 4)
+    return round(float(np.mean(excess) / downside_std * math.sqrt(252)), 4)
 
 
 def calc_beta(returns_list, benchmark_returns):
@@ -452,7 +454,7 @@ def main():
         # Try to load from agent outputs
         symbols = extract_symbols_from_portfolio(args.portfolio)
         if not symbols:
-            print("Error: Could not extract symbols from portfolio dir", file=sys.stderr)
+            print("Error: Could not extract symbols from portfolio dir. Check that JSON files exist in the directory.", file=sys.stderr)
             sys.exit(1)
     else:
         print("Error: Specify --symbols, --watchlist, or --portfolio", file=sys.stderr)
@@ -594,7 +596,7 @@ def extract_symbols_from_portfolio(portfolio_dir):
         except (json.JSONDecodeError, KeyError):
             continue
 
-    return list(symbols) if symbols else None
+    return list(symbols) if symbols else []
 
 
 if __name__ == "__main__":

@@ -288,7 +288,6 @@ def check_calendar(days_ahead=7):
     # Try to find actual earnings dates for watchlist stocks
     try:
         import yfinance as yf
-        from pathlib import Path
 
         config_path = CONFIG_DIR / "assets.yaml"
         if config_path.exists():
@@ -551,7 +550,7 @@ def generate_alert_payload(alerts):
 
         # Notion page properties
         "notion_properties": {
-            "title": f"Market Alert — {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+            "title": f"Market Alert — {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
             "severity": alerts[0]["severity"] if alerts else "LOW",
             "alert_count": len(alerts),
             "symbols_affected": list(set(a.get("symbol", "") for a in alerts)),
@@ -570,7 +569,7 @@ def generate_alert_payload(alerts):
 def _format_slack(alerts):
     """Format alerts as Slack-compatible message."""
     severity_emoji = {"CRITICAL": "🚨", "HIGH": "⚠️", "MEDIUM": "📊", "LOW": "ℹ️"}
-    lines = [f"*Market Alerts* — {datetime.now().strftime('%Y-%m-%d %H:%M UTC')}"]
+    lines = [f"*Market Alerts* — {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"]
     lines.append(f"_{len(alerts)} alert(s)_\n")
 
     for a in alerts[:10]:  # limit to 10
@@ -645,12 +644,16 @@ def run_full_check(config, symbols=None):
     """Run all event monitors and return combined alerts."""
     all_alerts = []
 
-    # Resolve symbols
+    # Resolve symbols (deduplicate across watchlists)
     if not symbols:
+        seen = set()
         symbols = []
         for wl in config.get("watchlists", {}).values():
             for asset in wl.get("assets", []):
-                symbols.append(asset["symbol"])
+                sym = asset["symbol"]
+                if sym not in seen:
+                    seen.add(sym)
+                    symbols.append(sym)
 
     # 1. Price alerts
     print("Checking price alerts...", file=sys.stderr)

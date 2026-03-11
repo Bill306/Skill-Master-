@@ -322,9 +322,13 @@ def compute_local_ta(symbol, period="6mo", interval="1d"):
         obv_trend = "FLAT"
         if len(obv) >= 5:
             obv_recent = obv[-5:]
-            if obv_recent[-1] > obv_recent[0] * 1.02:
+            # Use absolute difference rather than percentage — OBV can be zero or negative
+            obv_range = max(abs(v) for v in obv_recent) if obv_recent else 1
+            obv_threshold = max(obv_range * 0.02, 1.0)  # 2% of range or at least 1
+            obv_diff = obv_recent[-1] - obv_recent[0]
+            if obv_diff > obv_threshold:
                 obv_trend = "INCREASING"
-            elif obv_recent[-1] < obv_recent[0] * 0.98:
+            elif obv_diff < -obv_threshold:
                 obv_trend = "DECREASING"
 
         result["volume"] = {
