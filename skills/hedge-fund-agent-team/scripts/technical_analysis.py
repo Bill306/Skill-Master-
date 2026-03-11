@@ -165,6 +165,73 @@ def compute_local_ta(symbol, period="6mo", interval="1d"):
             rsi_signal = "OVERSOLD"
     result["rsi"] = {"value": rsi, "signal": rsi_signal}
 
+    # --- Stochastic RSI (14, 14, 3, 3) ---
+    def calc_stoch_rsi(prices, rsi_period=14, stoch_period=14, k_smooth=3, d_smooth=3):
+        """Stochastic RSI = (RSI - min(RSI)) / (max(RSI) - min(RSI)) over stoch_period."""
+        if len(prices) < rsi_period + stoch_period + 1:
+            return None, None
+        # Calculate RSI series
+        rsi_series = []
+        for i in range(rsi_period + 1, len(prices) + 1):
+            r = calc_rsi(prices[:i], rsi_period)
+            if r is not None:
+                rsi_series.append(r)
+        if len(rsi_series) < stoch_period:
+            return None, None
+        # Stochastic of RSI
+        stoch_k_raw = []
+        for i in range(stoch_period - 1, len(rsi_series)):
+            window = rsi_series[i - stoch_period + 1:i + 1]
+            rsi_min = min(window)
+            rsi_max = max(window)
+            if rsi_max == rsi_min:
+                stoch_k_raw.append(50.0)
+            else:
+                stoch_k_raw.append((rsi_series[i] - rsi_min) / (rsi_max - rsi_min) * 100)
+        # Smooth %K
+        if len(stoch_k_raw) >= k_smooth:
+            k_val = sum(stoch_k_raw[-k_smooth:]) / k_smooth
+        else:
+            k_val = stoch_k_raw[-1] if stoch_k_raw else None
+        # Smooth %D (SMA of %K)
+        if len(stoch_k_raw) >= k_smooth + d_smooth - 1:
+            k_smoothed = []
+            for i in range(k_smooth - 1, len(stoch_k_raw)):
+                k_smoothed.append(sum(stoch_k_raw[i - k_smooth + 1:i + 1]) / k_smooth)
+            d_val = sum(k_smoothed[-d_smooth:]) / d_smooth if len(k_smoothed) >= d_smooth else k_smoothed[-1]
+        else:
+            d_val = k_val
+        return round(k_val, 2) if k_val is not None else None, round(d_val, 2) if d_val is not None else None
+
+    stoch_k, stoch_d = calc_stoch_rsi(close)
+    stoch_signal = "NEUTRAL"
+    if stoch_k is not None:
+        if stoch_k >= 80:
+            stoch_signal = "OVERBOUGHT"
+        elif stoch_k <= 20:
+            stoch_signal = "OVERSOLD"
+    result["stochastic_rsi"] = {"k": stoch_k, "d": stoch_d, "signal": stoch_signal}
+
+    # --- Williams %R (14) ---
+    def calc_williams_r(high_arr, low_arr, close_arr, period=14):
+        """Williams %R = (Highest High - Close) / (Highest High - Lowest Low) * -100."""
+        if len(close_arr) < period:
+            return None
+        highest = float(np.max(high_arr[-period:]))
+        lowest = float(np.min(low_arr[-period:]))
+        if highest == lowest:
+            return -50.0
+        return round((highest - float(close_arr[-1])) / (highest - lowest) * -100, 2)
+
+    williams_r = calc_williams_r(high, low, close) if n >= 14 else None
+    wr_signal = "NEUTRAL"
+    if williams_r is not None:
+        if williams_r >= -20:
+            wr_signal = "OVERBOUGHT"
+        elif williams_r <= -80:
+            wr_signal = "OVERSOLD"
+    result["williams_r"] = {"value": williams_r, "signal": wr_signal}
+
     # --- MACD (12, 26, 9) ---
     if ema_12 and ema_26:
         macd_line = ema_12 - ema_26

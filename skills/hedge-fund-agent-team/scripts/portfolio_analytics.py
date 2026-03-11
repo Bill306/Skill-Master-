@@ -281,10 +281,16 @@ def classify_asset(symbol, tags=None):
         return "gold"
     if "CL=F" in sym or "oil" in tags:
         return "oil"
-    if "^TNX" in sym or "bond" in tags:
+    # Bonds & treasuries: ^TNX (10Y yield), ^TYX (30Y), ^FVX (5Y), TLT, IEF, etc.
+    if any(x in sym for x in ["^TNX", "^TYX", "^FVX", "^IRX"]) or "bond" in tags:
+        return "bonds"
+    if any(x in sym for x in ["TLT", "IEF", "SHY", "BND", "AGG", "GOVT"]) or "treasury" in tags:
         return "bonds"
     if "^VIX" in sym:
         return "vix"
+    # Currency pairs
+    if "=X" in sym or "DX-Y" in sym or "fx" in tags:
+        return "equities"  # No dedicated fx shock, use equities as fallback
     return "equities"
 
 
@@ -408,6 +414,7 @@ def check_compliance(symbols, weights, config, asset_tags=None):
 def main():
     parser = argparse.ArgumentParser(description="Hedge Fund — Portfolio Analytics & Risk")
     parser.add_argument("--symbols", type=str, default=None, help="Comma-separated symbols")
+    parser.add_argument("--watchlist", type=str, default=None, help="Comma-separated watchlist names from assets.yaml")
     parser.add_argument("--weights", type=str, default=None, help="Comma-separated weights (must sum to 1.0)")
     parser.add_argument("--portfolio", type=str, default=None, help="Path to /tmp/hedge-fund/ dir with agent outputs")
     parser.add_argument("--period", type=str, default="1y", help="Historical period for risk calc")
@@ -422,6 +429,25 @@ def main():
     # Resolve symbols and weights
     if args.symbols:
         symbols = [s.strip() for s in args.symbols.split(",")]
+    elif args.watchlist:
+        # Load symbols from watchlist(s) defined in assets.yaml
+        watchlist_names = [w.strip() for w in args.watchlist.split(",")]
+        symbols = []
+        watchlists = config.get("watchlists", {})
+        for wl_name in watchlist_names:
+            wl = watchlists.get(wl_name, {})
+            for asset in wl.get("assets", []):
+                sym = asset["symbol"]
+                # Skip macro instruments that aren't tradeable
+                if sym.startswith("^") and sym not in ("^GSPC", "^NDX", "^HSI"):
+                    continue
+                if "=F" in sym or "=X" in sym:
+                    continue
+                symbols.append(sym)
+        if not symbols:
+            print(f"Error: No tradeable symbols found in watchlist(s): {args.watchlist}", file=sys.stderr)
+            sys.exit(1)
+        print(f"Loaded {len(symbols)} symbols from watchlist(s): {args.watchlist}", file=sys.stderr)
     elif args.portfolio:
         # Try to load from agent outputs
         symbols = extract_symbols_from_portfolio(args.portfolio)

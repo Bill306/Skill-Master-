@@ -121,7 +121,10 @@ def check_price_alerts(symbols, history_file=None):
                     })
 
             # --- Gap detection ---
-            gap_pct = (float(hist["Open"].iloc[-1]) / prev_close - 1) * 100
+            if prev_close == 0:
+                gap_pct = 0.0
+            else:
+                gap_pct = (float(hist["Open"].iloc[-1]) / prev_close - 1) * 100
             if abs(gap_pct) >= 3.0:
                 gap_dir = "UP" if gap_pct > 0 else "DOWN"
                 alerts.append({
@@ -134,7 +137,7 @@ def check_price_alerts(symbols, history_file=None):
                 })
 
             # --- Large daily move ---
-            daily_change_pct = (current / prev_close - 1) * 100
+            daily_change_pct = (current / prev_close - 1) * 100 if prev_close != 0 else 0.0
             if abs(daily_change_pct) >= 5.0:
                 alerts.append({
                     "type": "LARGE_MOVE",
@@ -301,18 +304,33 @@ def check_calendar(days_ahead=7):
                     try:
                         ticker = yf.Ticker(sym)
                         cal = ticker.calendar
-                        if cal is not None and not cal.empty:
-                            for col in cal.columns:
-                                val = cal[col].iloc[0] if len(cal) > 0 else None
-                                if hasattr(val, "date"):
-                                    earn_date = val.date()
-                                    if today <= earn_date <= today + timedelta(days=days_ahead):
-                                        earnings_upcoming.append({
-                                            "event": f"Earnings: {sym}",
-                                            "date": earn_date.isoformat(),
-                                            "impact": "HIGH",
-                                            "relevant_agents": ["fundamental", "trader", "sentiment"],
-                                        })
+                        if cal is not None:
+                            # ticker.calendar can be a DataFrame or dict depending on yfinance version
+                            earn_dates = []
+                            if hasattr(cal, "iterrows"):
+                                # DataFrame: check "Earnings Date" row or iterate all values
+                                for idx, row in cal.iterrows():
+                                    for val in row:
+                                        if hasattr(val, "date"):
+                                            earn_dates.append(val.date())
+                            elif isinstance(cal, dict):
+                                # Dict format: look for earnings date keys
+                                for key, val in cal.items():
+                                    if hasattr(val, "date"):
+                                        earn_dates.append(val.date())
+                                    elif isinstance(val, list):
+                                        for v in val:
+                                            if hasattr(v, "date"):
+                                                earn_dates.append(v.date())
+                            for earn_date in earn_dates:
+                                if today <= earn_date <= today + timedelta(days=days_ahead):
+                                    earnings_upcoming.append({
+                                        "event": f"Earnings: {sym}",
+                                        "date": earn_date.isoformat(),
+                                        "impact": "HIGH",
+                                        "relevant_agents": ["fundamental", "trader", "sentiment"],
+                                    })
+                                    break  # One entry per symbol
                     except Exception:
                         pass
 
@@ -321,6 +339,189 @@ def check_calendar(days_ahead=7):
         print(f"  [WARN] Earnings calendar check: {e}", file=sys.stderr)
 
     return events
+
+
+# ---------------------------------------------------------------------------
+# News Sentiment Monitor
+# ---------------------------------------------------------------------------
+
+
+def check_news_alerts(symbols=None, news_output_path=None, threshold=0.5):
+    """Check for significant sentiment shifts in recent news via ai-news-digest.
+
+    Reads previously fetched news JSON and compares sentiment scores to detect
+    large shifts that may warrant agent team analysis.
+
+    Args:
+        symbols: List of symbols to filter news for
+        news_output_path: Path to ai-news-digest output JSON
+        threshold: Sentiment shift threshold (0-1 scale) to trigger alert
+    """
+    alerts = []
+
+    # Resolve news output path
+    if not news_output_path:
+        # Check common locations
+        candidates = [
+            Path("/tmp/hedge-fund/news_raw.json"),
+            Path("/tmp/hedge-fund/news_sentiment.json"),
+        ]
+        for p in candidates:
+            if p.exists():
+                news_output_path = p
+                break
+
+    if not news_output_path or not Path(news_output_path).exists():
+        # Try to fetch fresh news if ai-news-digest script is available
+        news_script = SCRIPT_DIR.parent.parent / "ai-news-digest" / "scripts" / "fetch_news.py"
+        if news_script.exists():
+            import subprocess
+            try:
+                result = subprocess.run(
+                    ["python", str(news_script), "--hours", "6", "--format", "json"],
+                    capture_output=True, text=True, timeout=60,
+                )
+                if result.returncode == 0 and result.stdout.strip():
+                    articles = json.loads(result.stdout)
+                    return _analyze_news_sentiment(articles, symbols, threshold)
+            except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError) as e:
+                print(f"  [WARN] News fetch failed: {e}", file=sys.stderr)
+        return alerts
+
+    # Load existing news data
+    try:
+        with open(news_output_path, "r", encoding="utf-8") as f:
+            articles = json.load(f)
+        return _analyze_news_sentiment(articles, symbols, threshold)
+    except (json.JSONDecodeError, FileNotFoundError) as e:
+        print(f"  [WARN] Could not read news data: {e}", file=sys.stderr)
+        return alerts
+
+
+def _analyze_news_sentiment(articles, symbols=None, threshold=0.5):
+    """Analyze news articles for sentiment shifts and generate alerts."""
+    alerts = []
+
+    if not articles:
+        return alerts
+
+    # Normalize articles list
+    if isinstance(articles, dict):
+        articles = articles.get("articles", articles.get("items", [articles]))
+
+    # Keyword-based sentiment scoring per symbol
+    # Positive words → +1, negative words → -1, normalized by article count
+    positive_words = {"surge", "soar", "beat", "upgrade", "bullish", "rally", "breakout",
+                      "record", "growth", "strong", "outperform", "buy", "raise"}
+    negative_words = {"crash", "plunge", "miss", "downgrade", "bearish", "selloff", "warning",
+                      "weak", "decline", "lawsuit", "investigation", "ban", "fine", "fraud",
+                      "bankruptcy", "default", "layoff", "recall"}
+    regulatory_words = {"investigation", "lawsuit", "ban", "regulation", "fine", "antitrust",
+                        "subpoena", "probe", "sanction", "restriction"}
+
+    # Aggregate sentiment per symbol
+    symbol_sentiment = {}
+    regulatory_hits = []
+    all_article_scores = []
+
+    for article in articles:
+        title = str(article.get("title", "")).lower()
+        summary = str(article.get("summary", article.get("description", ""))).lower()
+        text = f"{title} {summary}"
+
+        # Score this article
+        pos_count = sum(1 for w in positive_words if w in text)
+        neg_count = sum(1 for w in negative_words if w in text)
+        article_score = (pos_count - neg_count) / max(pos_count + neg_count, 1)
+        all_article_scores.append(article_score)
+
+        # Check for regulatory keywords
+        reg_hits = [w for w in regulatory_words if w in text]
+        if reg_hits:
+            regulatory_hits.append({
+                "title": article.get("title", ""),
+                "keywords": reg_hits,
+                "source": article.get("source", ""),
+            })
+
+        # Match to symbols
+        if symbols:
+            for sym in symbols:
+                sym_lower = sym.lower().replace("-", "").replace(".", "")
+                # Also check common company name mappings
+                sym_names = {sym_lower}
+                name_map = {
+                    "nvda": {"nvidia"}, "msft": {"microsoft"}, "googl": {"google", "alphabet"},
+                    "meta": {"meta", "facebook"}, "aapl": {"apple"}, "amzn": {"amazon"},
+                    "tsm": {"tsmc", "taiwan semiconductor"}, "avgo": {"broadcom"},
+                    "9988": {"alibaba", "阿里"}, "0700": {"tencent", "腾讯"},
+                    "btc": {"bitcoin"}, "eth": {"ethereum"}, "sol": {"solana"},
+                }
+                sym_key = sym_lower.split(".")[0].split("-")[0]
+                sym_names.update(name_map.get(sym_key, set()))
+
+                if any(name in text for name in sym_names):
+                    if sym not in symbol_sentiment:
+                        symbol_sentiment[sym] = []
+                    symbol_sentiment[sym].append(article_score)
+
+    # Generate alerts from aggregated sentiment
+    for sym, scores in symbol_sentiment.items():
+        if not scores:
+            continue
+        avg_sentiment = sum(scores) / len(scores)
+        article_count = len(scores)
+
+        if abs(avg_sentiment) >= threshold and article_count >= 2:
+            direction = "POSITIVE" if avg_sentiment > 0 else "NEGATIVE"
+            alerts.append({
+                "type": "NEWS_SENTIMENT_SHIFT",
+                "severity": "HIGH" if abs(avg_sentiment) >= 0.7 else "MEDIUM",
+                "symbol": sym,
+                "message": f"{sym} sentiment strongly {direction.lower()} ({avg_sentiment:+.2f}) across {article_count} articles",
+                "data": {
+                    "sentiment_score": round(avg_sentiment, 3),
+                    "direction": direction,
+                    "article_count": article_count,
+                },
+                "action": "ANALYZE",
+            })
+
+    # Overall market sentiment shift
+    if all_article_scores:
+        overall = sum(all_article_scores) / len(all_article_scores)
+        if abs(overall) >= threshold:
+            direction = "BULLISH" if overall > 0 else "BEARISH"
+            alerts.append({
+                "type": "MARKET_SENTIMENT_SHIFT",
+                "severity": "HIGH",
+                "symbol": "_MARKET",
+                "message": f"Overall news sentiment shifted {direction} ({overall:+.2f}) across {len(all_article_scores)} articles",
+                "data": {
+                    "sentiment_score": round(overall, 3),
+                    "direction": direction,
+                    "article_count": len(all_article_scores),
+                },
+                "action": "ANALYZE",
+            })
+
+    # Regulatory alerts
+    if regulatory_hits:
+        affected_titles = [h["title"][:80] for h in regulatory_hits[:3]]
+        alerts.append({
+            "type": "REGULATORY_ACTION",
+            "severity": "HIGH",
+            "symbol": "_REGULATORY",
+            "message": f"Regulatory news detected in {len(regulatory_hits)} article(s)",
+            "data": {
+                "hit_count": len(regulatory_hits),
+                "sample_titles": affected_titles,
+                "keywords_found": list(set(kw for h in regulatory_hits for kw in h["keywords"])),
+            },
+            "action": "RISK_REVIEW",
+        })
+
+    return alerts
 
 
 # ---------------------------------------------------------------------------
@@ -448,10 +649,16 @@ def run_full_check(config, symbols=None):
     all_alerts.extend(vol_alerts)
     print(f"  → {len(vol_alerts)} volatility alerts", file=sys.stderr)
 
-    # 3. Generate payload
+    # 3. News sentiment
+    print("Checking news sentiment...", file=sys.stderr)
+    news_alerts = check_news_alerts(symbols=symbols)
+    all_alerts.extend(news_alerts)
+    print(f"  → {len(news_alerts)} news alerts", file=sys.stderr)
+
+    # 4. Generate payload
     payload = generate_alert_payload(all_alerts)
 
-    # 4. Log alerts
+    # 5. Log alerts
     if all_alerts:
         ensure_data_dir()
         with open(ALERTS_LOG, "a", encoding="utf-8") as f:

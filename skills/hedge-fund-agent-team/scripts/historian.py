@@ -104,6 +104,24 @@ def record_recommendations(input_path, session_id=None):
     return recorded
 
 
+def _normalize_confidence(value):
+    """Normalize confidence to a string label (HIGH/MEDIUM/LOW).
+
+    Handles both float (0.0-1.0) and string inputs from different agents.
+    """
+    if isinstance(value, (int, float)):
+        if value >= 0.7:
+            return "HIGH"
+        elif value >= 0.4:
+            return "MEDIUM"
+        else:
+            return "LOW"
+    s = str(value).upper().strip()
+    if s in ("HIGH", "MEDIUM", "LOW"):
+        return s
+    return "MEDIUM"
+
+
 def _extract_recommendations(filepath, agent_name, recommendations):
     """Extract structured recommendations from an agent's output file."""
     try:
@@ -176,7 +194,7 @@ def _extract_recommendations(filepath, agent_name, recommendations):
             "entry_price": None,
             "stop_loss": None,
             "take_profit": None,
-            "confidence": str(data.get("confidence", "MEDIUM")),
+            "confidence": _normalize_confidence(data.get("confidence", "MEDIUM")),
             "timeframe": "MACRO",
             "rationale": data.get("summary", "")[:500],
             "timestamp": now,
@@ -552,11 +570,24 @@ def _load_history():
 
 
 def _save_history(records):
-    """Overwrite history file with updated records."""
+    """Overwrite history file with updated records (atomic write via temp file)."""
+    import tempfile
+
     ensure_data_dir()
-    with open(HISTORY_FILE, "w", encoding="utf-8") as f:
-        for rec in records:
-            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    # Write to temp file first, then rename — prevents data loss on crash
+    fd, tmp_path = tempfile.mkstemp(dir=str(DATA_DIR), suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            for rec in records:
+                f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+        os.replace(tmp_path, str(HISTORY_FILE))  # atomic on POSIX
+    except Exception:
+        # Clean up temp file on failure
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
 
 
 def purge_old(older_than_days):
